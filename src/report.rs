@@ -51,11 +51,21 @@ impl Default for Test {
     }
 }
 
+// my $sumcount
+// my $sumbrcount
+// my $sumfnccount
+struct SumCount {
+    sum_count: HashMap<i32, i32>, // key: line number, value: count
+    sum_br_count: HashMap<String, i32>, // key: function name, value: execution count
+    sum_fn_count: i32 // FIXME br data structure
+}
+
 struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
     test: Option<Test>,
     tests: HashMap<String, Test>,
+    sum: SumCount
 }
 
 impl ReportParser {
