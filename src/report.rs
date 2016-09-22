@@ -36,16 +36,16 @@ pub fn records_from_file(file: &str) -> Result<Vec<LCOVRecord>, ParseError> {
 
 #[derive(Clone)]
 struct Test {
-    test_count: u32,
-    test_fn_count: u32,
-    test_br_count: u32
+    test_count: HashMap<u32, u32>, // key: line number, value: test count
+    test_fn_count: HashMap<String, u32>, // key: function name, value: line number
+    test_br_count: u32 // FIXME br data structure
 }
 
 impl Default for Test {
     fn default() -> Self {
         Test {
-            test_count: 0,
-            test_fn_count: 0,
+            test_count: HashMap::new(),
+            test_fn_count: HashMap::new(),
             test_br_count: 0
         }
     }
