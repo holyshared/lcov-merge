@@ -1,0 +1,12 @@
+[package]
+name = "lcov-merge"
+version = "0.0.1"
+description = "Merges multiple report of LCOV"
+authors = [ "Noritaka Horio <holy.shared.design@gmail.com>" ]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/holyshared/lcov-merge"
+readme = "README.md"
+homepage = "https://github.com/holyshared/lcov-merge"
+
+[dependencies]
+lcov-parser = "1.1.2"
