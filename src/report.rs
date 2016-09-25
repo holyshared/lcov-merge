@@ -56,13 +56,49 @@ impl Default for Test {
 // my $sumfnccount
 struct SumCount {
     sum_count: HashMap<u32, u32>, // key: line number, value: count
-    sum_br_count: HashMap<String, u32>, // key: function name, value: execution count
+    sum_br_count: HashMap<String, Branch>, // key: function name, value: Branch
     sum_fn_count: HashMap<String, u32> // FIXME br data structure
 }
 
 // key: line_number, value: checksum value
 type CheckSum = HashMap<u32, String>;
+
+// key: function name, value: line_number
 type FunctionData = HashMap<String, u32>;
+
+struct Branch {
+    block: u32,
+    branch: u32,
+    taken: u32
+}
+
+use std::hash:: { Hash, Hasher };
+use std::cmp:: { Eq, PartialEq };
+use std::fmt;
+
+
+#[derive(Debug, Eq)]
+struct BranchKey(u32, u32);
+
+impl PartialEq for BranchKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+impl Hash for BranchKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+        self.1.hash(state);
+    }
+}
+
+impl fmt::Display for BranchKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}-{}", self.0, self.1)
+    }
+}
+
 
 struct ReportParser {
     test_name: Option<String>,
@@ -179,5 +215,135 @@ impl ReportParser {
         let mut test = self.test.as_mut().unwrap();
         let mut test_fn_count = test.test_fn_count.entry(func_name.clone()).or_insert(0);
         *test_fn_count += *execution_count;
+    }
+    fn on_branch_data(line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
+
+/*
+        if self.sum.sum_br_count.contains_key(line_number) {
+            let mut branch = self.sum.sum_br_count.get_mut(line_number).unwrap();
+
+            if (branch.block == block_number && branch.branch == branch_number) {
+            }
+        } else {
+            self.sum.sum_br_count.insert(line_number.clone(), Branch {
+                block: block_number.clone(),
+                branch: branch_number.cline(),
+                taken: taken.cline()
+            }
+        }
+*/
+/*
+        let mut branch = self.sum.sum_br_count.entry(line_number.clone())
+            .or_insert(Branch {
+                block: block_number.clone(),
+                branch: branch_number.cline(),
+                taken: taken.cline()
+            });
+*/
+
+
+//BranchData(u32, u32, u32, u32),   // BRDA:<line number>,<block number>,<branch number>,<taken>
+
+/*
+        my ($line, $block, $branch, $taken) =
+           ($1, $2, $3, $4);
+
+        last if (!$br_coverage);
+        $sumbrcount->{$line} =
+            br_ivec_push($sumbrcount->{$line},
+                     $block, $branch, $taken);
+
+        # Add test-specific counts
+        if (defined($testname)) {
+            $testbrcount->{$line} =
+                br_ivec_push(
+                    $testbrcount->{$line},
+                    $block, $branch,
+                    $taken);
+        }
+        last;
+*/
+
+
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+sub br_ivec_push($$$$)
+{
+    my ($vec, $block, $branch, $taken) = @_;
+	my $offset;
+	my $num = br_ivec_len($vec);
+	my $i;
+
+	$vec = "" if (!defined($vec));
+	$block = $BR_VEC_MAX if $block < 0;
+
+	# Check if branch already exists in vector
+	for ($i = 0; $i < $num; $i++) {
+		my ($v_block, $v_branch, $v_taken) = br_ivec_get($vec, $i);
+		$v_block = $BR_VEC_MAX if $v_block < 0;
+
+		next if ($v_block != $block || $v_branch != $branch);
+
+		# Add taken counts
+		$taken = br_taken_add($taken, $v_taken);
+		last;
+	}
+
+	$offset = $i * $BR_VEC_ENTRIES;
+	$taken = br_taken_to_num($taken);
+
+	# Add to vector
+	vec($vec, $offset + $BR_BLOCK, $BR_VEC_WIDTH) = $block;
+	vec($vec, $offset + $BR_BRANCH, $BR_VEC_WIDTH) = $branch;
+	vec($vec, $offset + $BR_TAKEN, $BR_VEC_WIDTH) = $taken;
+
+	return $vec;
+}
+*/
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use report:: { BranchKey };
+    use std::collections:: { HashMap };
+
+    #[test]
+    fn branch_key() {
+        let branch1 = BranchKey(1, 1);
+        let branch2 = BranchKey(1, 2);
+        assert!(branch1 != branch2, "branch1 = {}, branch2 = {}", branch1, branch2);
+
+        let same_branch1 = BranchKey(1, 1);
+        let same_branch2 = BranchKey(1, 1);
+        assert!(same_branch1 == same_branch2, "branch1 = {}, branch2 = {}", same_branch1, same_branch2);
+    }
+
+    #[test]
+    fn branch_key_as_hash_key() {
+        let mut container = HashMap::new();
+        container.insert(BranchKey(1, 1), 1);
+
+        assert!( container.contains_key(&BranchKey(1, 1)) );
     }
 }
