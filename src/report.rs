@@ -57,11 +57,12 @@ impl Default for Test {
 struct SumCount {
     sum_count: HashMap<u32, u32>, // key: line number, value: count
     sum_br_count: HashMap<String, u32>, // key: function name, value: execution count
-    sum_fn_count: u32 // FIXME br data structure
+    sum_fn_count: HashMap<String, u32> // FIXME br data structure
 }
 
 // key: line_number, value: checksum value
 type CheckSum = HashMap<u32, String>;
+type FunctionData = HashMap<String, u32>;
 
 struct ReportParser {
     test_name: Option<String>,
@@ -69,7 +70,8 @@ struct ReportParser {
     test: Option<Test>,
     tests: HashMap<String, Test>,
     sum: SumCount,
-    checksum: CheckSum
+    checksum: CheckSum,
+    func: FunctionData
 }
 
 impl ReportParser {
@@ -84,6 +86,10 @@ impl ReportParser {
                     line_number,
                     execution_count,
                     checksum,
+                ),
+                &LCOVRecord::FunctionName(ref line_number, ref func_name, ) => self.on_func_data(
+                    func_name,
+                    line_number
                 ),
                 _ => { continue; }
             };
@@ -137,5 +143,25 @@ impl ReportParser {
         if current_checksum != &checksum_value {
             println!("{} {}", current_checksum, checksum_value);
         }
+    }
+    fn on_func_data(&mut self, func_name: &String, line_number: &u32) {
+        let _ = self.func.entry(func_name.clone())
+            .or_insert(line_number.clone());
+
+        let _ = self.sum.sum_fn_count.entry(func_name.clone())
+            .or_insert(0);
+
+        if self.test_name.is_some() {
+            if self.test.is_some() {
+                let mut test = self.test.as_mut().unwrap();
+                let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
+            }
+        }
+
+        if !(self.test_name.is_some() && self.test.is_some()) {
+            return;
+        }
+        let mut test = self.test.as_mut().unwrap();
+        let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
     }
 }
