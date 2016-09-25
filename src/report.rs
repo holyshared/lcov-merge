@@ -87,9 +87,13 @@ impl ReportParser {
                     execution_count,
                     checksum,
                 ),
-                &LCOVRecord::FunctionName(ref line_number, ref func_name, ) => self.on_func_data(
+                &LCOVRecord::FunctionName(ref line_number, ref func_name, ) => self.on_func_name(
                     func_name,
                     line_number
+                ),
+                &LCOVRecord::FunctionData(ref execution_count, ref func_name) => self.on_func_data(
+                    func_name,
+                    execution_count
                 ),
                 _ => { continue; }
             };
@@ -144,7 +148,7 @@ impl ReportParser {
             println!("{} {}", current_checksum, checksum_value);
         }
     }
-    fn on_func_data(&mut self, func_name: &String, line_number: &u32) {
+    fn on_func_name(&mut self, func_name: &String, line_number: &u32) {
         let _ = self.func.entry(func_name.clone())
             .or_insert(line_number.clone());
 
@@ -163,5 +167,17 @@ impl ReportParser {
         }
         let mut test = self.test.as_mut().unwrap();
         let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
+    }
+    fn on_func_data(&mut self, func_name: &String, execution_count: &u32) {
+        let mut sum_fn_count = self.sum.sum_fn_count.entry(func_name.clone()).or_insert(0);
+        *sum_fn_count += *execution_count;
+
+        if self.test_name.is_none() {
+            return;
+        }
+
+        let mut test = self.test.as_mut().unwrap();
+        let mut test_fn_count = test.test_fn_count.entry(func_name.clone()).or_insert(0);
+        *test_fn_count += *execution_count;
     }
 }
