@@ -6,6 +6,7 @@ use std::default::Default;
 use lcov_parser::parser:: { LCOVParser, RecordParseError };
 use lcov_parser::record:: { LCOVRecord };
 use branch:: { Branch, BranchUnit };
+use test_sum:: { TestSum };
 
 pub enum ParseError {
     IOError(IOError),
@@ -52,16 +53,6 @@ impl Default for Test {
     }
 }
 
-// my $sumcount
-// my $sumbrcount
-// my $sumfnccount
-
-
-struct SumCount {
-    sum_count: HashMap<u32, u32>, // key: line number, value: count
-    sum_br_count: HashMap<String, Branch>, // key: function name, value: Branch
-    sum_fn_count: HashMap<String, u32> // FIXME br data structure
-}
 
 // key: line_number, value: checksum value
 type CheckSum = HashMap<u32, String>;
@@ -74,7 +65,7 @@ struct ReportParser {
     source_name: Option<String>,
     test: Option<Test>,
     tests: HashMap<String, Test>,
-    sum: SumCount,
+    sum: TestSum,
     checksum: CheckSum,
     func: FunctionData
 }
@@ -126,8 +117,7 @@ impl ReportParser {
         }
     }
     fn on_data(&mut self, line_number: &u32, execution_count: &u32, checksum: &Option<String>) {
-        let mut sum_count = self.sum.sum_count.entry(line_number.clone()).or_insert(0);
-        *sum_count += *execution_count;
+        self.sum.add_line_count(line_number, execution_count);
 
         if self.test_name.is_some() {
             if self.test.is_some() {
@@ -157,8 +147,6 @@ impl ReportParser {
         let _ = self.func.entry(func_name.clone())
             .or_insert(line_number.clone());
 
-        let _ = self.sum.sum_fn_count.entry(func_name.clone())
-            .or_insert(0);
 
         if self.test_name.is_some() {
             if self.test.is_some() {
@@ -174,8 +162,7 @@ impl ReportParser {
         let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
     }
     fn on_func_data(&mut self, func_name: &String, execution_count: &u32) {
-        let mut sum_fn_count = self.sum.sum_fn_count.entry(func_name.clone()).or_insert(0);
-        *sum_fn_count += *execution_count;
+        self.sum.add_func_count(func_name, execution_count);
 
         if self.test_name.is_none() {
             return;
