@@ -186,7 +186,6 @@ impl ReportParser {
         *test_fn_count += *execution_count;
     }
     fn on_branch_data(line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
-
 /*
         if self.sum.sum_br_count.contains_key(line_number) {
             let mut branch = self.sum.sum_br_count.get_mut(line_number).unwrap();

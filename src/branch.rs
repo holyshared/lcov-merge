@@ -19,7 +19,7 @@ use std::fmt:: { Display, Formatter, Result, Error };
 ///
 /// assert!(not_eq_branch1 != not_eq_branch2);
 /// ```
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct BranchUnit(u32, u32);
 
 impl BranchUnit {
