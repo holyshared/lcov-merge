@@ -5,6 +5,7 @@ use std::collections:: { HashMap };
 use std::default::Default;
 use lcov_parser::parser:: { LCOVParser, RecordParseError };
 use lcov_parser::record:: { LCOVRecord };
+use branch:: { Branch, BranchUnit };
 
 pub enum ParseError {
     IOError(IOError),
@@ -54,6 +55,8 @@ impl Default for Test {
 // my $sumcount
 // my $sumbrcount
 // my $sumfnccount
+
+
 struct SumCount {
     sum_count: HashMap<u32, u32>, // key: line number, value: count
     sum_br_count: HashMap<String, Branch>, // key: function name, value: Branch
@@ -65,40 +68,6 @@ type CheckSum = HashMap<u32, String>;
 
 // key: function name, value: line_number
 type FunctionData = HashMap<String, u32>;
-
-struct Branch {
-    block: u32,
-    branch: u32,
-    taken: u32
-}
-
-use std::hash:: { Hash, Hasher };
-use std::cmp:: { Eq, PartialEq };
-use std::fmt;
-
-
-#[derive(Debug, Eq)]
-struct BranchKey(u32, u32);
-
-impl PartialEq for BranchKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-
-impl Hash for BranchKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-        self.1.hash(state);
-    }
-}
-
-impl fmt::Display for BranchKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}-{}", self.0, self.1)
-    }
-}
-
 
 struct ReportParser {
     test_name: Option<String>,
@@ -319,31 +288,3 @@ sub br_ivec_push($$$$)
 	return $vec;
 }
 */
-
-
-
-
-#[cfg(test)]
-mod tests {
-    use report:: { BranchKey };
-    use std::collections:: { HashMap };
-
-    #[test]
-    fn branch_key() {
-        let branch1 = BranchKey(1, 1);
-        let branch2 = BranchKey(1, 2);
-        assert!(branch1 != branch2, "branch1 = {}, branch2 = {}", branch1, branch2);
-
-        let same_branch1 = BranchKey(1, 1);
-        let same_branch2 = BranchKey(1, 1);
-        assert!(same_branch1 == same_branch2, "branch1 = {}, branch2 = {}", same_branch1, same_branch2);
-    }
-
-    #[test]
-    fn branch_key_as_hash_key() {
-        let mut container = HashMap::new();
-        container.insert(BranchKey(1, 1), 1);
-
-        assert!( container.contains_key(&BranchKey(1, 1)) );
-    }
-}
