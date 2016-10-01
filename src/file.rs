@@ -1,7 +1,6 @@
 use std::collections:: { HashMap };
 use test:: { Test };
 use test_sum:: { TestSum };
-use branch:: { BranchUnit };
 
 // key: line_number, value: checksum value
 pub type CheckSum = HashMap<u32, String>;

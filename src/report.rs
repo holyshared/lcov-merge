@@ -5,7 +5,7 @@ use std::collections:: { HashMap };
 use std::default::Default;
 use lcov_parser::parser:: { LCOVParser, RecordParseError };
 use lcov_parser::record:: { LCOVRecord };
-use branch:: { Branch, BranchUnit };
+use branch:: { BranchUnit };
 use test:: { Test };
 use test_sum:: { TestSum };
 use file:: { File, CheckSum, FunctionData };

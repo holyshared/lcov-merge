@@ -9,5 +9,5 @@ mod test_sum;
 
 pub use self::test:: { Test };
 pub use self::test_sum:: { TestSum };
-pub use self::branch:: { Branch, BranchUnit };
+pub use self::branch:: { BranchUnit };
 pub use self::file:: { File };

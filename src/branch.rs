@@ -1,6 +1,6 @@
 use std::hash:: { Hash, Hasher };
 use std::cmp:: { Eq, PartialEq };
-use std::fmt:: { Display, Formatter, Result, Error };
+use std::fmt:: { Display, Formatter, Result };
 
 /// Units of the branch
 ///
@@ -45,12 +45,6 @@ impl Display for BranchUnit {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{}-{}", self.0, self.1)
     }
-}
-
-pub struct Branch {
-    block: u32,
-    branch: u32,
-    taken: u32
 }
 
 #[cfg(test)]
