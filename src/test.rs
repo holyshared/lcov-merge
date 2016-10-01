@@ -6,7 +6,7 @@ type LineNumber = u32;
 type ExecutionCount = u32;
 type FunctionName = String;
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct Test {
     line: HashMap<LineNumber, ExecutionCount>,
     func: HashMap<FunctionName, ExecutionCount>,
@@ -43,7 +43,7 @@ impl Test {
         *line_count += *exec_count;
     }
 
-    pub fn get_line_count(&mut self, line_number: &u32) -> Option<&u32> {
+    pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
         self.line.get(line_number)
     }
 
@@ -53,7 +53,7 @@ impl Test {
         *func_count += *exec_count;
     }
 
-    pub fn get_func_count(&mut self, func_name: &String) -> Option<&u32> {
+    pub fn get_func_count(&self, func_name: &String) -> Option<&u32> {
         self.func.get(func_name)
     }
 
@@ -83,7 +83,7 @@ impl Test {
         *branch_count += *exec_count;
     }
 
-    pub fn get_branch_count(&mut self, line_number: &u32) -> Option<&HashMap<BranchUnit, u32>> {
+    pub fn get_branch_count(&self, line_number: &u32) -> Option<&HashMap<BranchUnit, u32>> {
         self.branch.get(line_number)
     }
 }

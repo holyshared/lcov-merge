@@ -10,6 +10,7 @@ use test:: { Test };
 use test_sum:: { TestSum };
 use file:: { File, CheckSum, FunctionData };
 
+#[derive(Debug)]
 pub enum ParseError {
     IOError(IOError),
     RecordParseError(RecordParseError)
@@ -32,6 +33,31 @@ pub fn records_from_file(file: &str) -> Result<Vec<LCOVRecord>, ParseError> {
     Ok(try!(parser.parse()))
 }
 
+/// Read the trace file of LCOV
+///
+/// # Examples
+///
+/// ```
+/// use lcov_merge::parse_file;
+///
+/// let files = parse_file("tests/fixtures/fixture1.info").unwrap();
+/// assert_eq!(files.keys().count(), 3);
+///
+/// let fixture = files.get("/home/vagrant/shared/lcov-merge/tests/fixtures/fixture.c").unwrap();
+///
+/// assert_eq!(fixture.sum().get_line_count(&4), Some(&1));
+/// assert_eq!(fixture.sum().get_line_count(&6), Some(&1));
+/// assert_eq!(fixture.sum().get_line_count(&7), Some(&1));
+/// assert_eq!(fixture.sum().get_line_count(&8), Some(&1));
+/// assert_eq!(fixture.sum().get_line_count(&1), None);
+///
+/// assert_eq!(fixture.get_test(&"example".to_string()).unwrap().get_line_count(&4), Some(&1));
+/// ```
+pub fn parse_file(file: &str) -> Result<HashMap<String, File>, ParseError> {
+    let mut parse = ReportParser::new();
+    parse.parse(file)
+}
+
 struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
@@ -43,7 +69,19 @@ struct ReportParser {
 }
 
 impl ReportParser {
-    fn parse(&mut self, file: &str) -> Result<(), ParseError> {
+    fn new() -> Self {
+        ReportParser {
+            test_name: None,
+            source_name: None,
+            tests: HashMap::new(),
+            sum: TestSum::new(),
+            checksum: HashMap::new(),
+            func: HashMap::new(),
+            files: HashMap::new()
+        }
+    }
+
+    fn parse(&mut self, file: &str) -> Result<HashMap<String, File>, ParseError> {
         let records = try!(records_from_file(file));
 
         for record in records.iter() {
@@ -73,7 +111,7 @@ impl ReportParser {
                 _ => { continue; }
             };
         }
-        Ok(())
+        Ok(self.files.clone())
     }
     fn on_test_name(&mut self, test_name: &Option<String>) {
         self.test_name = test_name.clone().or( Some(String::new()) );

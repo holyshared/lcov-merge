@@ -14,6 +14,14 @@ pub struct TestSum {
 }
 
 impl TestSum {
+    pub fn new() -> Self {
+        TestSum {
+            line: HashMap::new(),
+            branch: HashMap::new(),
+            func: HashMap::new()
+        }
+    }
+
     /// Add the number of times of execution of the line
     ///
     /// # Examples
@@ -33,7 +41,7 @@ impl TestSum {
         *line_count += *exec_count;
     }
 
-    pub fn get_line_count(&mut self, line_number: &u32) -> Option<&u32> {
+    pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
         self.line.get(line_number)
     }
 
@@ -43,7 +51,7 @@ impl TestSum {
         *func_count += *exec_count;
     }
 
-    pub fn get_func_count(&mut self, func_name: &String) -> Option<&u32> {
+    pub fn get_func_count(&self, func_name: &String) -> Option<&u32> {
         self.func.get(func_name)
     }
 
