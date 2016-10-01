@@ -6,6 +6,7 @@ use std::default::Default;
 use lcov_parser::parser:: { LCOVParser, RecordParseError };
 use lcov_parser::record:: { LCOVRecord };
 use branch:: { Branch, BranchUnit };
+use test:: { Test };
 use test_sum:: { TestSum };
 
 pub enum ParseError {
@@ -30,30 +31,6 @@ pub fn records_from_file(file: &str) -> Result<Vec<LCOVRecord>, ParseError> {
     Ok(try!(parser.parse()))
 }
 
-//
-// $testcount = $testdata->{$testname};
-// $testfnccount = $testfncdata->{$testname};
-// $testbrcount = $testbrdata->{$testname};
-//
-
-#[derive(Clone)]
-struct Test {
-    test_count: HashMap<u32, u32>, // key: line number, value: test count
-    test_fn_count: HashMap<String, u32>, // key: function name, value: line number
-    test_br_count: u32 // FIXME br data structure
-}
-
-impl Default for Test {
-    fn default() -> Self {
-        Test {
-            test_count: HashMap::new(),
-            test_fn_count: HashMap::new(),
-            test_br_count: 0
-        }
-    }
-}
-
-
 // key: line_number, value: checksum value
 type CheckSum = HashMap<u32, String>;
 
@@ -63,7 +40,6 @@ type FunctionData = HashMap<String, u32>;
 struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
-    test: Option<Test>,
     tests: HashMap<String, Test>,
     sum: TestSum,
     checksum: CheckSum,
@@ -97,34 +73,24 @@ impl ReportParser {
         Ok(())
     }
     fn on_test_name(&mut self, test_name: &Option<String>) {
-        self.test_name = test_name.clone();
+        self.test_name = test_name.clone().or( Some(String::new()) );
     }
     fn on_source_file(&mut self, source_name: &String) {
         self.source_name = Some(source_name.clone());
 
-        match self.test_name {
-            Some(ref current_test_name) => {
-                // $testcount = $testdata->{$testname};
-                // $testfnccount = $testfncdata->{$testname};
-                // $testbrcount = $testbrdata->{$testname};
-                if !self.tests.contains_key(current_test_name) {
-                    self.tests.insert(current_test_name.to_string(), Test::default());
-                }
-                let test = self.tests.get(current_test_name);
-                self.test = Some(test.unwrap().clone());
-            },
-            None => self.test = Some(Test::default())
+        let current_test_name = self.test_name.as_ref().unwrap();
+
+        if !self.tests.contains_key(current_test_name) {
+            self.tests.insert(current_test_name.to_string(), Test::default());
         }
     }
     fn on_data(&mut self, line_number: &u32, execution_count: &u32, checksum: &Option<String>) {
         self.sum.add_line_count(line_number, execution_count);
 
         if self.test_name.is_some() {
-            if self.test.is_some() {
-                let mut test = self.test.as_mut().unwrap();
-                let mut test_count = test.test_count.entry(line_number.clone()).or_insert(0);
-                *test_count += *execution_count;
-            }
+            let test_name = self.test_name.clone().unwrap();
+            let mut test = self.tests.get_mut(&test_name).unwrap();
+            test.add_line_count(line_number, execution_count);
         }
 
         if checksum.is_none() {
@@ -146,20 +112,6 @@ impl ReportParser {
     fn on_func_name(&mut self, func_name: &String, line_number: &u32) {
         let _ = self.func.entry(func_name.clone())
             .or_insert(line_number.clone());
-
-
-        if self.test_name.is_some() {
-            if self.test.is_some() {
-                let mut test = self.test.as_mut().unwrap();
-                let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
-            }
-        }
-
-        if !(self.test_name.is_some() && self.test.is_some()) {
-            return;
-        }
-        let mut test = self.test.as_mut().unwrap();
-        let _ = test.test_fn_count.entry(func_name.clone()).or_insert(0);
     }
     fn on_func_data(&mut self, func_name: &String, execution_count: &u32) {
         self.sum.add_func_count(func_name, execution_count);
@@ -168,9 +120,10 @@ impl ReportParser {
             return;
         }
 
-        let mut test = self.test.as_mut().unwrap();
-        let mut test_fn_count = test.test_fn_count.entry(func_name.clone()).or_insert(0);
-        *test_fn_count += *execution_count;
+        let test_name = self.test_name.clone().unwrap();
+        let mut test = self.tests.get_mut(&test_name).unwrap();
+
+        test.add_func_count(func_name, execution_count);
     }
     fn on_branch_data(line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
 /*
