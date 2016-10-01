@@ -6,6 +6,7 @@ type LineNumber = u32;
 type ExecutionCount = u32;
 type FunctionName = String;
 
+#[derive(Clone)]
 pub struct TestSum {
     line: HashMap<LineNumber, ExecutionCount>,
     func: HashMap<FunctionName, ExecutionCount>,

@@ -8,6 +8,7 @@ use lcov_parser::record:: { LCOVRecord };
 use branch:: { Branch, BranchUnit };
 use test:: { Test };
 use test_sum:: { TestSum };
+use file:: { File, CheckSum, FunctionData };
 
 pub enum ParseError {
     IOError(IOError),
@@ -31,19 +32,14 @@ pub fn records_from_file(file: &str) -> Result<Vec<LCOVRecord>, ParseError> {
     Ok(try!(parser.parse()))
 }
 
-// key: line_number, value: checksum value
-type CheckSum = HashMap<u32, String>;
-
-// key: function name, value: line_number
-type FunctionData = HashMap<String, u32>;
-
 struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
     tests: HashMap<String, Test>,
     sum: TestSum,
     checksum: CheckSum,
-    func: FunctionData
+    func: FunctionData,
+    files: HashMap<String, File>
 }
 
 impl ReportParser {
@@ -73,6 +69,7 @@ impl ReportParser {
                     branch_number,
                     taken
                 ),
+                &LCOVRecord::EndOfRecord => self.on_end_of_record(),
                 _ => { continue; }
             };
         }
@@ -149,5 +146,15 @@ impl ReportParser {
                 taken
             );
         }
+    }
+    fn on_end_of_record(&mut self) {
+        let source_name = self.source_name.clone().unwrap();
+
+        self.files.insert(source_name, File::new(
+            self.sum.clone(),
+            self.tests.clone(),
+            self.checksum.clone(),
+            self.func.clone()
+        ));
     }
 }
