@@ -59,13 +59,19 @@ impl ReportParser {
                     execution_count,
                     checksum,
                 ),
-                &LCOVRecord::FunctionName(ref line_number, ref func_name, ) => self.on_func_name(
+                &LCOVRecord::FunctionName(ref line_number, ref func_name) => self.on_func_name(
                     func_name,
                     line_number
                 ),
                 &LCOVRecord::FunctionData(ref execution_count, ref func_name) => self.on_func_data(
                     func_name,
                     execution_count
+                ),
+                &LCOVRecord::BranchData(ref line_number, ref block_number, ref branch_number, ref taken) => self.on_branch_data(
+                    line_number,
+                    block_number,
+                    branch_number,
+                    taken
                 ),
                 _ => { continue; }
             };
@@ -125,105 +131,23 @@ impl ReportParser {
 
         test.add_func_count(func_name, execution_count);
     }
-    fn on_branch_data(line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
-/*
-        if self.sum.sum_br_count.contains_key(line_number) {
-            let mut branch = self.sum.sum_br_count.get_mut(line_number).unwrap();
+    fn on_branch_data(&mut self, line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
+        let ref branch_unit = BranchUnit::new(block_number.clone(), branch_number.clone());
 
-            if (branch.block == block_number && branch.branch == branch_number) {
-            }
-        } else {
-            self.sum.sum_br_count.insert(line_number.clone(), Branch {
-                block: block_number.clone(),
-                branch: branch_number.cline(),
-                taken: taken.cline()
-            }
+        self.sum.add_branch_count(
+            line_number,
+            branch_unit,
+            taken
+        );
+
+        if self.test_name.is_some() {
+            let ref test_name = self.test_name.clone().unwrap();
+            let mut test = self.tests.get_mut(test_name).unwrap();
+            test.add_branch_count(
+                line_number,
+                branch_unit,
+                taken
+            );
         }
-*/
-/*
-        let mut branch = self.sum.sum_br_count.entry(line_number.clone())
-            .or_insert(Branch {
-                block: block_number.clone(),
-                branch: branch_number.cline(),
-                taken: taken.cline()
-            });
-*/
-
-
-//BranchData(u32, u32, u32, u32),   // BRDA:<line number>,<block number>,<branch number>,<taken>
-
-/*
-        my ($line, $block, $branch, $taken) =
-           ($1, $2, $3, $4);
-
-        last if (!$br_coverage);
-        $sumbrcount->{$line} =
-            br_ivec_push($sumbrcount->{$line},
-                     $block, $branch, $taken);
-
-        # Add test-specific counts
-        if (defined($testname)) {
-            $testbrcount->{$line} =
-                br_ivec_push(
-                    $testbrcount->{$line},
-                    $block, $branch,
-                    $taken);
-        }
-        last;
-*/
-
-
-
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-sub br_ivec_push($$$$)
-{
-    my ($vec, $block, $branch, $taken) = @_;
-	my $offset;
-	my $num = br_ivec_len($vec);
-	my $i;
-
-	$vec = "" if (!defined($vec));
-	$block = $BR_VEC_MAX if $block < 0;
-
-	# Check if branch already exists in vector
-	for ($i = 0; $i < $num; $i++) {
-		my ($v_block, $v_branch, $v_taken) = br_ivec_get($vec, $i);
-		$v_block = $BR_VEC_MAX if $v_block < 0;
-
-		next if ($v_block != $block || $v_branch != $branch);
-
-		# Add taken counts
-		$taken = br_taken_add($taken, $v_taken);
-		last;
-	}
-
-	$offset = $i * $BR_VEC_ENTRIES;
-	$taken = br_taken_to_num($taken);
-
-	# Add to vector
-	vec($vec, $offset + $BR_BLOCK, $BR_VEC_WIDTH) = $block;
-	vec($vec, $offset + $BR_BRANCH, $BR_VEC_WIDTH) = $branch;
-	vec($vec, $offset + $BR_TAKEN, $BR_VEC_WIDTH) = $taken;
-
-	return $vec;
-}
-*/
