@@ -1,9 +1,32 @@
 use std::hash:: { Hash, Hasher };
 use std::cmp:: { Eq, PartialEq };
-use std::fmt;
+use std::fmt:: { Display, Formatter, Result, Error };
 
+/// Units of the branch
+///
+/// # Examples
+///
+/// ```
+/// use lcov_merge::BranchUnit;
+///
+/// let branch1 = BranchUnit::new(1, 1);
+/// let branch2 = BranchUnit::new(1, 1);
+///
+/// assert!(branch1 == branch2);
+///
+/// let not_eq_branch1 = BranchUnit::new(1, 1);
+/// let not_eq_branch2 = BranchUnit::new(1, 2);
+///
+/// assert!(not_eq_branch1 != not_eq_branch2);
+/// ```
 #[derive(Debug, Eq)]
 pub struct BranchUnit(u32, u32);
+
+impl BranchUnit {
+    pub fn new(block: u32, branch: u32) -> BranchUnit {
+        BranchUnit(block, branch)
+    }
+}
 
 impl PartialEq for BranchUnit {
     fn eq(&self, other: &Self) -> bool {
@@ -18,8 +41,8 @@ impl Hash for BranchUnit {
     }
 }
 
-impl fmt::Display for BranchUnit {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+impl Display for BranchUnit {
+    fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{}-{}", self.0, self.1)
     }
 }
