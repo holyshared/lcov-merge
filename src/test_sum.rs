@@ -1,6 +1,8 @@
 use std::default:: { Default };
 use std::collections:: { HashMap };
+use std::ops::AddAssign;
 use branch:: { BranchUnit };
+use lcov_parser:: { LineData, FunctionData, BranchData };
 
 type LineNumber = u32;
 type ExecutionCount = u32;
@@ -93,5 +95,86 @@ impl Default for TestSum {
             branch: HashMap::new(),
             func: HashMap::new()
         }
+    }
+}
+
+impl<'a> AddAssign<&'a LineData> for TestSum {
+    fn add_assign(&mut self, data: &'a LineData) {
+        let mut line_count = self.line.entry(data.line)
+            .or_insert(0);
+        *line_count += data.count;
+    }
+}
+
+impl<'a> AddAssign<&'a FunctionData> for TestSum {
+    fn add_assign(&mut self, data: &'a FunctionData) {
+        let mut func_count = self.func.entry(data.name.clone())
+            .or_insert(0);
+        *func_count += data.count;
+    }
+}
+
+impl<'a> AddAssign<&'a BranchData> for TestSum {
+    fn add_assign(&mut self, data: &'a BranchData) {
+        let unit = BranchUnit::new(data.block, data.branch);
+
+        let mut branch = self.branch.entry(data.line)
+            .or_insert(HashMap::new());
+
+        let mut branch_count = branch.entry(unit)
+            .or_insert(0);
+
+        *branch_count += data.taken;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections:: { HashMap };
+    use test_sum:: { TestSum };
+    use branch:: { BranchUnit };
+    use lcov_parser:: { LineData, FunctionData, BranchData };
+
+    #[test]
+    fn add_line_data() {
+        let mut test = TestSum::new();
+
+        test += &LineData { line: 1, count: 1, checksum: None };
+        assert_eq!( test.get_line_count(&1), Some(&1u32) );
+
+        test += &LineData { line: 1, count: 1, checksum: None };
+        assert_eq!( test.get_line_count(&1), Some(&2u32) );
+    }
+
+    #[test]
+    fn add_func_data() {
+        let mut test = TestSum::new();
+
+        test += &FunctionData { name: "main".to_string(), count: 1 };
+        assert_eq!( test.get_func_count(&"main".to_string()), Some(&1u32) );
+
+        test += &FunctionData { name: "main".to_string(), count: 1 };
+        assert_eq!( test.get_func_count(&"main".to_string()), Some(&2u32) );
+    }
+
+
+    #[test]
+    fn add_branch_data() {
+        let mut test = TestSum::new();
+
+        test += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+
+        let mut first_branch_count = HashMap::new();
+        first_branch_count.insert(BranchUnit::new(1, 1), 1);
+
+        assert_eq!( test.get_branch_count(&1), Some(&first_branch_count) );
+
+
+        test += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+
+        let mut second_branch_count = HashMap::new();
+        second_branch_count.insert(BranchUnit::new(1, 1), 2);
+
+        assert_eq!( test.get_branch_count(&1), Some(&second_branch_count) );
     }
 }
