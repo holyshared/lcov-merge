@@ -95,7 +95,7 @@ impl ReportParser {
         }
     }
     fn on_data(&mut self, data: &LineData) {
-        self.sum.add_line_count(&data.line, &data.count);
+        self.sum += data;
 
         if self.test_name.is_some() {
             let test_name = self.test_name.clone().unwrap();
@@ -124,7 +124,7 @@ impl ReportParser {
             .or_insert(func_name.line.clone());
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
-        self.sum.add_func_count(&func_data.name, &func_data.count);
+        self.sum += func_data;
 
         if self.test_name.is_none() {
             return;
@@ -138,11 +138,7 @@ impl ReportParser {
     fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
         let ref branch_unit = BranchUnit::new(branch_data.block.clone(), branch_data.branch.clone());
 
-        self.sum.add_branch_count(
-            &branch_data.line,
-            branch_unit,
-            &branch_data.taken
-        );
+        self.sum += branch_data;
 
         if self.test_name.is_some() {
             let ref test_name = self.test_name.clone().unwrap();
