@@ -9,4 +9,4 @@ readme = "README.md"
 homepage = "https://github.com/holyshared/lcov-merge"
 
 [dependencies]
-lcov-parser = "1.1.2"
+lcov-parser = "2.0.0"

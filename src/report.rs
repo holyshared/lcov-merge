@@ -1,37 +1,15 @@
-use std::io:: { Error as IOError };
-use std::convert::From;
 use std::result:: { Result };
 use std::collections:: { HashMap };
 use std::default::Default;
-use lcov_parser::parser:: { LCOVParser, RecordParseError };
-use lcov_parser::record:: { LCOVRecord };
+use lcov_parser:: {
+    LCOVParser, LCOVRecord, LineData, FunctionData as FunctionDataRecord,
+    BranchData as BranchDataRecord,
+    FunctionName, ParseError, FromFile
+};
 use branch:: { BranchUnit };
 use test:: { Test };
 use test_sum:: { TestSum };
 use file:: { File, CheckSum, FunctionData };
-
-#[derive(Debug)]
-pub enum ParseError {
-    IOError(IOError),
-    RecordParseError(RecordParseError)
-}
-
-impl From<IOError> for ParseError {
-    fn from(error: IOError) -> Self {
-        ParseError::IOError(error)
-    }
-}
-
-impl From<RecordParseError> for ParseError {
-    fn from(error: RecordParseError) -> Self {
-        ParseError::RecordParseError(error)
-    }
-}
-
-pub fn records_from_file(file: &str) -> Result<Vec<LCOVRecord>, ParseError> {
-    let parser = try!(LCOVParser::from_file(file));
-    Ok(try!(parser.parse()))
-}
 
 /// Read the trace file of LCOV
 ///
@@ -80,34 +58,25 @@ impl ReportParser {
             files: HashMap::new()
         }
     }
-
     fn parse(&mut self, file: &str) -> Result<HashMap<String, File>, ParseError> {
-        let records = try!(records_from_file(file));
+        let mut parser = try!(LCOVParser::from_file(file));
 
-        for record in records.iter() {
+        loop {
+            let result = try!(parser.next());
+
+            if result.is_none() {
+                break;
+            }
+            let record = result.unwrap();
+
             match record {
-                &LCOVRecord::TestName(ref name) => self.on_test_name(name),
-                &LCOVRecord::SourceFile(ref name) => self.on_source_file(name),
-                &LCOVRecord::Data(ref line_number, ref execution_count, ref checksum) => self.on_data(
-                    line_number,
-                    execution_count,
-                    checksum,
-                ),
-                &LCOVRecord::FunctionName(ref line_number, ref func_name) => self.on_func_name(
-                    func_name,
-                    line_number
-                ),
-                &LCOVRecord::FunctionData(ref execution_count, ref func_name) => self.on_func_data(
-                    func_name,
-                    execution_count
-                ),
-                &LCOVRecord::BranchData(ref line_number, ref block_number, ref branch_number, ref taken) => self.on_branch_data(
-                    line_number,
-                    block_number,
-                    branch_number,
-                    taken
-                ),
-                &LCOVRecord::EndOfRecord => self.on_end_of_record(),
+                LCOVRecord::TestName(ref name) => self.on_test_name(name),
+                LCOVRecord::SourceFile(ref name) => self.on_source_file(name),
+                LCOVRecord::Data(ref data) => self.on_data(data),
+                LCOVRecord::FunctionName(ref func_name) => self.on_func_name(func_name),
+                LCOVRecord::FunctionData(ref func_data) => self.on_func_data(func_data),
+                LCOVRecord::BranchData(ref branch_data) => self.on_branch_data(branch_data),
+                LCOVRecord::EndOfRecord => self.on_end_of_record(),
                 _ => { continue; }
             };
         }
@@ -125,37 +94,37 @@ impl ReportParser {
             self.tests.insert(current_test_name.to_string(), Test::default());
         }
     }
-    fn on_data(&mut self, line_number: &u32, execution_count: &u32, checksum: &Option<String>) {
-        self.sum.add_line_count(line_number, execution_count);
+    fn on_data(&mut self, data: &LineData) {
+        self.sum.add_line_count(&data.line, &data.count);
 
         if self.test_name.is_some() {
             let test_name = self.test_name.clone().unwrap();
             let mut test = self.tests.get_mut(&test_name).unwrap();
-            test.add_line_count(line_number, execution_count);
+            test.add_line_count(&data.line, &data.count);
         }
 
-        if checksum.is_none() {
+        if data.checksum.is_none() {
             return;
         }
 
-        if !self.checksum.contains_key(line_number) {
-            let checksum_value = checksum.clone().unwrap();
-            self.checksum.insert(line_number.clone(), checksum_value);
+        if !self.checksum.contains_key(&data.line) {
+            let checksum_value = data.checksum.clone().unwrap();
+            self.checksum.insert(data.line.clone(), checksum_value);
             return;
         }
 
-        let checksum_value = checksum.clone().unwrap();
-        let current_checksum = self.checksum.get(line_number).unwrap();
+        let checksum_value = data.checksum.clone().unwrap();
+        let current_checksum = self.checksum.get(&data.line).unwrap();
         if current_checksum != &checksum_value {
             println!("{} {}", current_checksum, checksum_value);
         }
     }
-    fn on_func_name(&mut self, func_name: &String, line_number: &u32) {
-        let _ = self.func.entry(func_name.clone())
-            .or_insert(line_number.clone());
+    fn on_func_name(&mut self, func_name: &FunctionName) {
+        let _ = self.func.entry(func_name.name.clone())
+            .or_insert(func_name.line.clone());
     }
-    fn on_func_data(&mut self, func_name: &String, execution_count: &u32) {
-        self.sum.add_func_count(func_name, execution_count);
+    fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
+        self.sum.add_func_count(&func_data.name, &func_data.count);
 
         if self.test_name.is_none() {
             return;
@@ -164,24 +133,24 @@ impl ReportParser {
         let test_name = self.test_name.clone().unwrap();
         let mut test = self.tests.get_mut(&test_name).unwrap();
 
-        test.add_func_count(func_name, execution_count);
+        test.add_func_count(&func_data.name, &func_data.count);
     }
-    fn on_branch_data(&mut self, line_number: &u32, block_number: &u32, branch_number: &u32, taken: &u32) {
-        let ref branch_unit = BranchUnit::new(block_number.clone(), branch_number.clone());
+    fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
+        let ref branch_unit = BranchUnit::new(branch_data.block.clone(), branch_data.branch.clone());
 
         self.sum.add_branch_count(
-            line_number,
+            &branch_data.line,
             branch_unit,
-            taken
+            &branch_data.taken
         );
 
         if self.test_name.is_some() {
             let ref test_name = self.test_name.clone().unwrap();
             let mut test = self.tests.get_mut(test_name).unwrap();
             test.add_branch_count(
-                line_number,
+                &branch_data.line,
                 branch_unit,
-                taken
+                &branch_data.taken
             );
         }
     }
