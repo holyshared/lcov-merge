@@ -3,6 +3,7 @@ extern crate lcov_parser;
 mod report;
 mod file;
 mod branch;
+mod line;
 mod test;
 
 pub use self::report:: { parse_file };
