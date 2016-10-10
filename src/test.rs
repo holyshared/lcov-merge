@@ -2,6 +2,7 @@ use std::default:: { Default };
 use std::collections:: { HashMap };
 use std::ops::AddAssign;
 use branch:: { BranchUnit };
+use line:: { Lines };
 use lcov_parser:: { LineData, FunctionData, BranchData };
 
 type LineNumber = u32;
@@ -12,7 +13,7 @@ pub type TestSum = Test;
 
 #[derive(Debug,Clone)]
 pub struct Test {
-    line: HashMap<LineNumber, ExecutionCount>,
+    line: Lines,
     func: HashMap<FunctionName, ExecutionCount>,
     branch: HashMap<LineNumber, HashMap<BranchUnit, ExecutionCount>>
 }
@@ -20,7 +21,7 @@ pub struct Test {
 impl Default for Test {
     fn default() -> Self {
         Test {
-            line: HashMap::new(),
+            line: Lines::new(),
             func: HashMap::new(),
             branch: HashMap::new()
         }
@@ -30,12 +31,12 @@ impl Default for Test {
 impl Test {
     pub fn new() -> Self {
         Test {
-            line: HashMap::new(),
+            line: Lines::new(),
             branch: HashMap::new(),
             func: HashMap::new()
         }
     }
-    pub fn lines(&self) -> &HashMap<LineNumber, ExecutionCount> {
+    pub fn lines(&self) -> &Lines {
         &self.line
     }
     pub fn functions(&self) -> &HashMap<FunctionName, ExecutionCount> {
@@ -43,25 +44,6 @@ impl Test {
     }
     pub fn branches(&self) -> &HashMap<LineNumber, HashMap<BranchUnit, ExecutionCount>> {
         &self.branch
-    }
-
-    /// Add the number of times of execution of the line
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lcov_merge::TestSum;
-    ///
-    /// let mut sum = TestSum::default();
-    /// sum.add_line_count(&1, &1);
-    /// sum.add_line_count(&1, &2);
-    ///
-    /// assert_eq!(sum.get_line_count(&1), Some(&3));
-    /// ```
-    pub fn add_line_count(&mut self, line_number: &u32, exec_count: &u32) {
-        let mut line_count = self.line.entry(line_number.clone())
-            .or_insert(0);
-        *line_count += *exec_count;
     }
 
     pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
@@ -118,9 +100,12 @@ impl Test {
 
 impl<'a> AddAssign<&'a LineData> for Test {
     fn add_assign(&mut self, data: &'a LineData) {
-        let mut line_count = self.line.entry(data.line)
-            .or_insert(0);
-        *line_count += data.count;
+        self.line += data;
+
+
+//        let mut line_count = self.line.entry(data.line)
+//            .or_insert(0);
+//        *line_count += data.count;
     }
 }
 
@@ -148,16 +133,7 @@ impl<'a> AddAssign<&'a BranchData> for Test {
 
 impl<'a> AddAssign<&'a Test> for Test {
     fn add_assign(&mut self, other: &'a Test) {
-        let lines = other.lines();
-
-        for (line, count) in lines.iter() {
-            if self.line.contains_key(line) {
-                let current_count = self.line.get_mut(line).unwrap();
-                *current_count += *count;
-            } else {
-                self.line.insert(*line, *count);
-            }
-        }
+        self.line += other.lines();
 
         let functions = other.functions();
 
