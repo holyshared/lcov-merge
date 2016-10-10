@@ -82,7 +82,10 @@ impl ReportParser {
         Ok(self.files.clone())
     }
     fn on_test_name(&mut self, test_name: &Option<String>) {
-        self.test_name = test_name.clone().or( Some(String::new()) );
+        self.test_name = match test_name {
+            &Some(ref name) => Some(name.clone()),
+            &None => Some(String::new())
+        };
     }
     fn on_source_file(&mut self, source_name: &String) {
         self.source_name = Some(source_name.clone());
@@ -97,8 +100,8 @@ impl ReportParser {
         self.sum += data;
 
         if self.test_name.is_some() {
-            let test_name = self.test_name.clone().unwrap();
-            let mut test = self.tests.get_mut(&test_name).unwrap();
+            let test_name = self.test_name.as_ref().unwrap();
+            let mut test = self.tests.get_mut(test_name).unwrap();
 
             *test += data;
         }
@@ -120,8 +123,10 @@ impl ReportParser {
         }
     }
     fn on_func_name(&mut self, func_name: &FunctionName) {
-        let _ = self.func.entry(func_name.name.clone())
-            .or_insert(func_name.line.clone());
+        if self.func.contains_key(&func_name.name) {
+            return;
+        }
+        self.func.insert(func_name.name.clone(), func_name.line.clone());
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
         self.sum += func_data;
@@ -130,20 +135,22 @@ impl ReportParser {
             return;
         }
 
-        let test_name = self.test_name.clone().unwrap();
-        let mut test = self.tests.get_mut(&test_name).unwrap();
+        let test_name = self.test_name.as_ref().unwrap();
+        let mut test = self.tests.get_mut(test_name).unwrap();
 
         *test += func_data;
     }
     fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
         self.sum += branch_data;
 
-        if self.test_name.is_some() {
-            let ref test_name = self.test_name.clone().unwrap();
-            let mut test = self.tests.get_mut(test_name).unwrap();
-
-            *test += branch_data;
+        if self.test_name.is_none() {
+            return;
         }
+
+        let test_name = self.test_name.as_ref().unwrap();
+        let mut test = self.tests.get_mut(test_name).unwrap();
+
+        *test += branch_data;
     }
     fn on_end_of_record(&mut self) {
         let source_name = self.source_name.clone().unwrap();
