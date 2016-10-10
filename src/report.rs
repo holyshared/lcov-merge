@@ -99,7 +99,8 @@ impl ReportParser {
         if self.test_name.is_some() {
             let test_name = self.test_name.clone().unwrap();
             let mut test = self.tests.get_mut(&test_name).unwrap();
-            test.add_line_count(&data.line, &data.count);
+
+            *test += data;
         }
 
         if data.checksum.is_none() {
@@ -132,21 +133,16 @@ impl ReportParser {
         let test_name = self.test_name.clone().unwrap();
         let mut test = self.tests.get_mut(&test_name).unwrap();
 
-        test.add_func_count(&func_data.name, &func_data.count);
+        *test += func_data;
     }
     fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
-        let ref branch_unit = BranchUnit::new(branch_data.block.clone(), branch_data.branch.clone());
-
         self.sum += branch_data;
 
         if self.test_name.is_some() {
             let ref test_name = self.test_name.clone().unwrap();
             let mut test = self.tests.get_mut(test_name).unwrap();
-            test.add_branch_count(
-                &branch_data.line,
-                branch_unit,
-                &branch_data.taken
-            );
+
+            *test += branch_data;
         }
     }
     fn on_end_of_record(&mut self) {
