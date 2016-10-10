@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn add_lines_data() {
+    fn add_function_data() {
         let mut functions = Functions::new();
         functions += &FunctionData { name: "main".to_string(), count: 1 };
 
