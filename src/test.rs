@@ -35,6 +35,15 @@ impl Test {
             func: HashMap::new()
         }
     }
+    pub fn lines(&self) -> &HashMap<LineNumber, ExecutionCount> {
+        &self.line
+    }
+    pub fn functions(&self) -> &HashMap<FunctionName, ExecutionCount> {
+        &self.func
+    }
+    pub fn branches(&self) -> &HashMap<LineNumber, HashMap<BranchUnit, ExecutionCount>> {
+        &self.branch
+    }
 
     /// Add the number of times of execution of the line
     ///
@@ -137,6 +146,51 @@ impl<'a> AddAssign<&'a BranchData> for Test {
     }
 }
 
+impl<'a> AddAssign<&'a Test> for Test {
+    fn add_assign(&mut self, other: &'a Test) {
+        let lines = other.lines();
+
+        for (line, count) in lines.iter() {
+            if self.line.contains_key(line) {
+                let current_count = self.line.get_mut(line).unwrap();
+                *current_count += *count;
+            } else {
+                self.line.insert(*line, *count);
+            }
+        }
+
+        let functions = other.functions();
+
+        for (name, count) in functions.iter() {
+            if self.func.contains_key(name) {
+                let current_count = self.func.get_mut(name).unwrap();
+                *current_count += *count;
+            } else {
+                self.func.insert(name.clone(), *count);
+            }
+        }
+
+        let branches = other.branches();
+
+        for (line, branch) in branches.iter() {
+            if self.branch.contains_key(line) {
+                let current_branch_count = self.branch.get_mut(line).unwrap();
+
+                for (unit, count) in branch.iter() {
+                    if current_branch_count.contains_key(unit) {
+                        let current_count = current_branch_count.get_mut(unit).unwrap();
+                        *current_count += *count;
+                    } else {
+                        current_branch_count.insert(unit.clone(), *count);
+                    }
+                }
+            } else {
+                self.branch.insert(*line, branch.clone());
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections:: { HashMap };
@@ -185,5 +239,30 @@ mod tests {
         second_branch_count.insert(BranchUnit::new(1, 1), 2);
 
         assert_eq!( test.get_branch_count(&1), Some(&second_branch_count) );
+    }
+
+    #[test]
+    fn add_test_data() {
+        let mut test1 = Test::new();
+        test1 += &LineData { line: 1, count: 1, checksum: None };
+        test1 += &FunctionData { name: "main".to_string(), count: 1 };
+        test1 += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+
+        let test2 = {
+            let mut test2 = Test::new();
+            test2 += &LineData { line: 1, count: 1, checksum: None };
+            test2 += &FunctionData { name: "main".to_string(), count: 1 };
+            test2 += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+            test2
+        };
+        test1 += &test2;
+
+        assert_eq!( test1.get_line_count(&1), Some(&2u32) );
+        assert_eq!( test1.get_func_count(&"main".to_string()), Some(&2u32) );
+
+        let mut second_branch_count = HashMap::new();
+        second_branch_count.insert(BranchUnit::new(1, 1), 2);
+
+        assert_eq!( test1.get_branch_count(&1), Some(&second_branch_count) );
     }
 }
