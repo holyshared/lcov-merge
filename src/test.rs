@@ -1,10 +1,14 @@
 use std::default:: { Default };
 use std::collections:: { HashMap };
+use std::ops::AddAssign;
 use branch:: { BranchUnit };
+use lcov_parser:: { LineData, FunctionData, BranchData };
 
 type LineNumber = u32;
 type ExecutionCount = u32;
 type FunctionName = String;
+
+pub type TestSum = Test;
 
 #[derive(Debug,Clone)]
 pub struct Test {
@@ -24,6 +28,14 @@ impl Default for Test {
 }
 
 impl Test {
+    pub fn new() -> Self {
+        Test {
+            line: HashMap::new(),
+            branch: HashMap::new(),
+            func: HashMap::new()
+        }
+    }
+
     /// Add the number of times of execution of the line
     ///
     /// # Examples
@@ -85,5 +97,93 @@ impl Test {
 
     pub fn get_branch_count(&self, line_number: &u32) -> Option<&HashMap<BranchUnit, u32>> {
         self.branch.get(line_number)
+    }
+}
+
+
+
+
+
+
+
+
+impl<'a> AddAssign<&'a LineData> for Test {
+    fn add_assign(&mut self, data: &'a LineData) {
+        let mut line_count = self.line.entry(data.line)
+            .or_insert(0);
+        *line_count += data.count;
+    }
+}
+
+impl<'a> AddAssign<&'a FunctionData> for Test {
+    fn add_assign(&mut self, data: &'a FunctionData) {
+        let mut func_count = self.func.entry(data.name.clone())
+            .or_insert(0);
+        *func_count += data.count;
+    }
+}
+
+impl<'a> AddAssign<&'a BranchData> for Test {
+    fn add_assign(&mut self, data: &'a BranchData) {
+        let unit = BranchUnit::new(data.block, data.branch);
+
+        let mut branch = self.branch.entry(data.line)
+            .or_insert(HashMap::new());
+
+        let mut branch_count = branch.entry(unit)
+            .or_insert(0);
+
+        *branch_count += data.taken;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections:: { HashMap };
+    use test:: { Test };
+    use branch:: { BranchUnit };
+    use lcov_parser:: { LineData, FunctionData, BranchData };
+
+    #[test]
+    fn add_line_data() {
+        let mut test = Test::new();
+
+        test += &LineData { line: 1, count: 1, checksum: None };
+        assert_eq!( test.get_line_count(&1), Some(&1u32) );
+
+        test += &LineData { line: 1, count: 1, checksum: None };
+        assert_eq!( test.get_line_count(&1), Some(&2u32) );
+    }
+
+    #[test]
+    fn add_func_data() {
+        let mut test = Test::new();
+
+        test += &FunctionData { name: "main".to_string(), count: 1 };
+        assert_eq!( test.get_func_count(&"main".to_string()), Some(&1u32) );
+
+        test += &FunctionData { name: "main".to_string(), count: 1 };
+        assert_eq!( test.get_func_count(&"main".to_string()), Some(&2u32) );
+    }
+
+
+    #[test]
+    fn add_branch_data() {
+        let mut test = Test::new();
+
+        test += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+
+        let mut first_branch_count = HashMap::new();
+        first_branch_count.insert(BranchUnit::new(1, 1), 1);
+
+        assert_eq!( test.get_branch_count(&1), Some(&first_branch_count) );
+
+
+        test += &BranchData { line: 1, block: 1, branch: 1, taken: 1 };
+
+        let mut second_branch_count = HashMap::new();
+        second_branch_count.insert(BranchUnit::new(1, 1), 2);
+
+        assert_eq!( test.get_branch_count(&1), Some(&second_branch_count) );
     }
 }

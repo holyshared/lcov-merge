@@ -7,8 +7,7 @@ use lcov_parser:: {
     FunctionName, ParseError, FromFile
 };
 use branch:: { BranchUnit };
-use test:: { Test };
-use test_sum:: { TestSum };
+use test:: { Test, TestSum };
 use file:: { File, CheckSum, FunctionData };
 
 /// Read the trace file of LCOV

@@ -1,6 +1,5 @@
 use std::collections:: { HashMap };
-use test:: { Test };
-use test_sum:: { TestSum };
+use test:: { Test, TestSum };
 
 // key: line_number, value: checksum value
 pub type CheckSum = HashMap<u32, String>;
