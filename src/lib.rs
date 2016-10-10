@@ -4,6 +4,7 @@ mod report;
 mod file;
 mod branch;
 mod line;
+mod function;
 mod test;
 
 pub use self::report:: { parse_file };

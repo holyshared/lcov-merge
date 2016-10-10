@@ -20,7 +20,7 @@ impl Lines {
     pub fn iter(&self) -> Iter<LineNumber, ExecutionCount> {
         self.lines.iter()
     }
-    pub fn get(&self, key: &u32) -> Option<&ExecutionCount> {
+    pub fn get(&self, key: &LineNumber) -> Option<&ExecutionCount> {
         self.lines.get(key)
     }
 }
@@ -69,6 +69,7 @@ mod tests {
 
         let ref cloned_lines = lines.clone();
         lines += cloned_lines;
+
         assert_eq!( lines.get(&1), Some(&2u32) );
     }
 }

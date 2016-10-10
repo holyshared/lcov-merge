@@ -3,6 +3,7 @@ use std::collections:: { HashMap };
 use std::ops::AddAssign;
 use branch:: { BranchUnit };
 use line:: { Lines };
+use function:: { Functions };
 use lcov_parser:: { LineData, FunctionData, BranchData };
 
 type LineNumber = u32;
@@ -14,7 +15,7 @@ pub type TestSum = Test;
 #[derive(Debug,Clone)]
 pub struct Test {
     line: Lines,
-    func: HashMap<FunctionName, ExecutionCount>,
+    func: Functions,
     branch: HashMap<LineNumber, HashMap<BranchUnit, ExecutionCount>>
 }
 
@@ -22,7 +23,7 @@ impl Default for Test {
     fn default() -> Self {
         Test {
             line: Lines::new(),
-            func: HashMap::new(),
+            func: Functions::new(),
             branch: HashMap::new()
         }
     }
@@ -33,13 +34,13 @@ impl Test {
         Test {
             line: Lines::new(),
             branch: HashMap::new(),
-            func: HashMap::new()
+            func: Functions::new()
         }
     }
     pub fn lines(&self) -> &Lines {
         &self.line
     }
-    pub fn functions(&self) -> &HashMap<FunctionName, ExecutionCount> {
+    pub fn functions(&self) -> &Functions {
         &self.func
     }
     pub fn branches(&self) -> &HashMap<LineNumber, HashMap<BranchUnit, ExecutionCount>> {
@@ -48,12 +49,6 @@ impl Test {
 
     pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
         self.line.get(line_number)
-    }
-
-    pub fn add_func_count(&mut self, func_name: &String, exec_count: &u32) {
-        let mut func_count = self.func.entry(func_name.clone())
-            .or_insert(0);
-        *func_count += *exec_count;
     }
 
     pub fn get_func_count(&self, func_name: &String) -> Option<&u32> {
@@ -101,19 +96,12 @@ impl Test {
 impl<'a> AddAssign<&'a LineData> for Test {
     fn add_assign(&mut self, data: &'a LineData) {
         self.line += data;
-
-
-//        let mut line_count = self.line.entry(data.line)
-//            .or_insert(0);
-//        *line_count += data.count;
     }
 }
 
 impl<'a> AddAssign<&'a FunctionData> for Test {
     fn add_assign(&mut self, data: &'a FunctionData) {
-        let mut func_count = self.func.entry(data.name.clone())
-            .or_insert(0);
-        *func_count += data.count;
+        self.func += data;
     }
 }
 
@@ -134,17 +122,7 @@ impl<'a> AddAssign<&'a BranchData> for Test {
 impl<'a> AddAssign<&'a Test> for Test {
     fn add_assign(&mut self, other: &'a Test) {
         self.line += other.lines();
-
-        let functions = other.functions();
-
-        for (name, count) in functions.iter() {
-            if self.func.contains_key(name) {
-                let current_count = self.func.get_mut(name).unwrap();
-                *current_count += *count;
-            } else {
-                self.func.insert(name.clone(), *count);
-            }
-        }
+        self.func += other.functions();
 
         let branches = other.branches();
 
