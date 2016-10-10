@@ -17,10 +17,10 @@ use file:: { File, CheckSum, FunctionData };
 /// ```
 /// use lcov_merge::parse_file;
 ///
-/// let files = parse_file("tests/fixtures/fixture1.info").unwrap();
-/// assert_eq!(files.keys().count(), 3);
+/// let report = parse_file("tests/fixtures/fixture1.info").unwrap();
+/// assert_eq!(report.len(), 3);
 ///
-/// let fixture = files.get("/home/vagrant/shared/lcov-merge/tests/fixtures/fixture.c").unwrap();
+/// let fixture = report.get("/home/vagrant/shared/lcov-merge/tests/fixtures/fixture.c").unwrap();
 ///
 /// assert_eq!(fixture.sum().get_line_count(&4), Some(&1));
 /// assert_eq!(fixture.sum().get_line_count(&6), Some(&1));
@@ -30,7 +30,7 @@ use file:: { File, CheckSum, FunctionData };
 ///
 /// assert_eq!(fixture.get_test(&"example".to_string()).unwrap().get_line_count(&4), Some(&1));
 /// ```
-pub fn parse_file(file: &str) -> Result<HashMap<String, File>, ParseError> {
+pub fn parse_file(file: &str) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
 }
@@ -57,7 +57,7 @@ impl ReportParser {
             files: HashMap::new()
         }
     }
-    fn parse(&mut self, file: &str) -> Result<HashMap<String, File>, ParseError> {
+    fn parse(&mut self, file: &str) -> Result<Report, ParseError> {
         let mut parser = try!(LCOVParser::from_file(file));
 
         loop {
@@ -79,7 +79,7 @@ impl ReportParser {
                 _ => { continue; }
             };
         }
-        Ok(self.files.clone())
+        Ok(Report::new(self.files.clone()))
     }
     fn on_test_name(&mut self, test_name: &Option<String>) {
         self.test_name = match test_name {
@@ -161,5 +161,23 @@ impl ReportParser {
             self.checksum.clone(),
             self.func.clone()
         ));
+    }
+}
+
+pub struct Report {
+    files: HashMap<String, File>
+}
+
+impl Report {
+    pub fn new(files: HashMap<String, File>) -> Self {
+        Report {
+            files: files
+        }
+    }
+    pub fn get(&self, key: &str) -> Option<&File> {
+        self.files.get(&key.to_string())
+    }
+    pub fn len(&self) -> usize {
+        self.files.len()
     }
 }
