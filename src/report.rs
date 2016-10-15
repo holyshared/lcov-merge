@@ -1,14 +1,14 @@
 use std::result:: { Result };
-use std::collections:: { HashMap };
-use std::default::Default;
+//use std::collections:: { HashMap };
 use lcov_parser:: {
     LCOVParser, LCOVRecord, LineData, FunctionData as FunctionDataRecord,
     BranchData as BranchDataRecord,
     FunctionName, ParseError, FromFile
 };
-use branch:: { BranchUnit };
-use test:: { Test, TestSum };
-use file:: { File, CheckSum, FunctionData };
+use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
+
+//use test:: { Test, TestSum };
+//use file:: { File, CheckSum, FunctionData };
 
 /// Read the trace file of LCOV
 ///
@@ -38,11 +38,11 @@ pub fn parse_file(file: &str) -> Result<Report, ParseError> {
 struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
-    tests: HashMap<String, Test>,
+    tests: Tests,
     sum: TestSum,
-    checksum: CheckSum,
-    func: FunctionData,
-    files: HashMap<String, File>
+    checksum: CheckSums,
+    func: FunctionNames,
+    files: Files
 }
 
 impl ReportParser {
@@ -50,11 +50,11 @@ impl ReportParser {
         ReportParser {
             test_name: None,
             source_name: None,
-            tests: HashMap::new(),
+            tests: Tests::new(),
             sum: TestSum::new(),
-            checksum: HashMap::new(),
-            func: HashMap::new(),
-            files: HashMap::new()
+            checksum: CheckSums::new(),
+            func: FunctionNames::new(),
+            files: Files::new()
         }
     }
     fn parse(&mut self, file: &str) -> Result<Report, ParseError> {
@@ -89,44 +89,30 @@ impl ReportParser {
     }
     fn on_source_file(&mut self, source_name: &String) {
         self.source_name = Some(source_name.clone());
-
         let current_test_name = self.test_name.as_ref().unwrap();
-
-        if !self.tests.contains_key(current_test_name) {
-            self.tests.insert(current_test_name.to_string(), Test::default());
-        }
+        self.tests += current_test_name;
     }
-    fn on_data(&mut self, data: &LineData) {
-        self.sum += data;
+    fn on_data(&mut self, line_data: &LineData) {
+        self.sum += line_data;
 
         if self.test_name.is_some() {
             let test_name = self.test_name.as_ref().unwrap();
-            let mut test = self.tests.get_mut(test_name).unwrap();
-
-            *test += data;
+            self.tests += (test_name, line_data);
         }
 
-        if data.checksum.is_none() {
+        if line_data.checksum.is_none() {
             return;
         }
+        self.checksum += line_data;
 
-        if !self.checksum.contains_key(&data.line) {
-            let checksum_value = data.checksum.clone().unwrap();
-            self.checksum.insert(data.line.clone(), checksum_value);
-            return;
-        }
-
-        let checksum_value = data.checksum.clone().unwrap();
-        let current_checksum = self.checksum.get(&data.line).unwrap();
+        let checksum_value = line_data.checksum.clone().unwrap();
+        let current_checksum = self.checksum.get(&line_data.line).unwrap();
         if current_checksum != &checksum_value {
             println!("{} {}", current_checksum, checksum_value);
         }
     }
     fn on_func_name(&mut self, func_name: &FunctionName) {
-        if self.func.contains_key(&func_name.name) {
-            return;
-        }
-        self.func.insert(func_name.name.clone(), func_name.line.clone());
+        self.func += func_name;
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
         self.sum += func_data;
@@ -136,9 +122,7 @@ impl ReportParser {
         }
 
         let test_name = self.test_name.as_ref().unwrap();
-        let mut test = self.tests.get_mut(test_name).unwrap();
-
-        *test += func_data;
+        self.tests += (test_name, func_data);
     }
     fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
         self.sum += branch_data;
@@ -148,34 +132,35 @@ impl ReportParser {
         }
 
         let test_name = self.test_name.as_ref().unwrap();
-        let mut test = self.tests.get_mut(test_name).unwrap();
-
-        *test += branch_data;
+        self.tests += (test_name, branch_data);
     }
     fn on_end_of_record(&mut self) {
-        let source_name = self.source_name.clone().unwrap();
-
-        self.files.insert(source_name, File::new(
+        let source_name = self.source_name.as_ref().unwrap();
+        let file = File::new(
             self.sum.clone(),
             self.tests.clone(),
             self.checksum.clone(),
             self.func.clone()
-        ));
+        );
+        self.files += (source_name, &file);
     }
 }
 
 pub struct Report {
-    files: HashMap<String, File>
+    files: Files
 }
 
 impl Report {
-    pub fn new(files: HashMap<String, File>) -> Self {
+    pub fn new(files: Files) -> Self {
         Report {
             files: files
         }
     }
     pub fn get(&self, key: &str) -> Option<&File> {
         self.files.get(&key.to_string())
+    }
+    pub fn files(&self) -> &Files {
+        &self.files
     }
     pub fn len(&self) -> usize {
         self.files.len()
