@@ -1,13 +1,7 @@
 extern crate lcov_parser;
 
 mod report;
-mod file;
-mod branch;
-mod line;
-mod function;
-mod test;
+mod result;
 
 pub use self::report:: { parse_file };
-pub use self::test:: { Test, TestSum };
-pub use self::branch:: { BranchUnit };
-pub use self::file:: { File };
+pub use self::result::*;
