@@ -4,8 +4,9 @@ use std::fmt:: { Display, Formatter, Result };
 use std::ops::AddAssign;
 use std::collections::hash_map:: { Iter };
 use std::convert::AsRef;
-use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
 use lcov_parser:: { BranchData };
+use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
+use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 
 /// Units of the branch
 ///
@@ -83,6 +84,22 @@ impl Summary<BranchUnit, ExecutionCount> for BranchBlocks {
     }
 }
 
+impl HitCounter for BranchBlocks {
+    fn hit_count(&self) -> usize {
+        self.iter()
+            .filter(|&(_, taken)| *taken > 0)
+            .count()
+    }
+}
+
+impl FoundCounter for BranchBlocks {
+    fn found_count(&self) -> usize {
+        self.blocks.len()
+    }
+}
+
+impl HitFoundCounter for BranchBlocks {}
+
 impl AddAssign for BranchBlocks {
     fn add_assign(&mut self, other: BranchBlocks) {
         self.blocks += other.as_ref();
@@ -124,6 +141,25 @@ impl AsRef<AggregateResult<LineNumber, BranchBlocks>> for Branches {
     }
 }
 
+impl HitCounter for Branches {
+    fn hit_count(&self) -> usize {
+        self.iter()
+            .map(|(_, blocks)| blocks.hit_count() )
+            .fold(0, |p, n| p + n)
+    }
+}
+
+impl FoundCounter for Branches {
+    fn found_count(&self) -> usize {
+        self.iter()
+            .map(|(_, blocks)| blocks.found_count() )
+            .fold(0, |p, n| p + n)
+    }
+}
+
+impl HitFoundCounter for Branches {}
+
+
 impl Summary<LineNumber, BranchBlocks> for Branches {
     fn iter(&self) -> Iter<LineNumber, BranchBlocks> {
         self.branches.iter()
@@ -154,8 +190,9 @@ impl<'a> AddAssign<&'a BranchData> for Branches {
 mod tests {
     use std::collections:: { HashMap };
     use lcov_parser:: { BranchData };
-    use result::branch:: { BranchUnit, BranchBlocks };
-    use result::summary::Summary;
+    use result::branch:: { BranchUnit, Branches, BranchBlocks };
+    use result::summary:: { Summary };
+    use result::summary::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn branch_unit() {
@@ -204,5 +241,28 @@ mod tests {
         branches += &cloned_branches;
 
         assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&4));
+    }
+
+    #[test]
+    fn branch_blocks_hit_count_and_found_count() {
+        let mut branches = BranchBlocks::new();
+        let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
+        let b2 = &BranchData { line: 1, block: 0, branch: 2, taken: 0 };
+
+        branches += b1;
+        branches += b2;
+
+        assert_eq!(branches.hit_count(), 1);
+        assert_eq!(branches.found_count(), 2);
+    }
+
+    #[test]
+    fn branches_hit_count_and_found_count() {
+        let mut branches = Branches::new();
+        branches += &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
+        branches += &BranchData { line: 1, block: 0, branch: 2, taken: 0 };
+
+        assert_eq!(branches.hit_count(), 1);
+        assert_eq!(branches.found_count(), 2);
     }
 }

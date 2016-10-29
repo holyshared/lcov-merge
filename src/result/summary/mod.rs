@@ -7,6 +7,8 @@ use std::collections::hash_map:: { Entry, Iter };
 use std::fmt:: { Debug, Formatter, Result };
 use std::ops::AddAssign;
 
+pub mod counter;
+
 pub type TestName = String;
 pub type SourceFile = String;
 pub type LineNumber = u32;
