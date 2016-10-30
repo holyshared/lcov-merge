@@ -1,8 +1,9 @@
 use std::ops::AddAssign;
 use std::collections::hash_map:: { Iter };
 use std::convert::AsRef;
-use result::summary:: { LineNumber, CheckSum, ExecutionCount, Summary, AggregateResult, AggregateRegistry };
 use lcov_parser:: { LineData };
+use result::summary:: { LineNumber, CheckSum, ExecutionCount, Summary, AggregateResult, AggregateRegistry };
+use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 
 #[derive(Debug, Clone)]
 pub struct Lines {
@@ -35,6 +36,23 @@ impl Summary<LineNumber, ExecutionCount> for Lines {
     }
 }
 
+impl HitCounter for Lines {
+    fn hit_count(&self) -> usize {
+        self.iter()
+            .filter(|&(_, execution_count)| *execution_count > 0)
+            .count()
+    }
+}
+
+impl FoundCounter for Lines {
+    fn found_count(&self) -> usize {
+        self.lines.len()
+    }
+}
+
+impl HitFoundCounter for Lines {
+}
+
 impl<'a> AddAssign<&'a LineData> for Lines {
     fn add_assign(&mut self, data: &'a LineData) {
         let mut line_count = self.lines.entry(data.line)
@@ -48,6 +66,7 @@ impl<'a> AddAssign<&'a Lines> for Lines {
         self.lines += other.as_ref();
     }
 }
+
 
 
 
@@ -107,7 +126,8 @@ impl<'a> AddAssign<&'a CheckSums> for CheckSums {
 mod tests {
     use lcov_parser:: { LineData };
     use result::line:: { Lines };
-    use result::summary::Summary;
+    use result::summary:: { Summary };
+    use result::summary::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn add_line_data() {
@@ -128,5 +148,15 @@ mod tests {
         lines += cloned_lines;
 
         assert_eq!( lines.get(&1), Some(&2u32) );
+    }
+
+    #[test]
+    fn hit_count_and_found_count() {
+        let mut lines = Lines::new();
+        lines += &LineData { line: 1, count: 1, checksum: None };
+        lines += &LineData { line: 2, count: 0, checksum: None };
+
+        assert_eq!( lines.hit_count(), 1 );
+        assert_eq!( lines.found_count(), 2 );
     }
 }

@@ -1,9 +1,9 @@
 use std::ops::AddAssign;
-//use std::collections:: { HashMap };
 use std::collections::hash_map:: { Iter };
 use std::convert::AsRef;
-use result::summary:: { AggregateResult, AggregateRegistry, Summary, ExecutionCount, FunctionName, LineNumber };
 use lcov_parser:: { FunctionName as FunctionNameRecord, FunctionData };
+use result::summary:: { AggregateResult, AggregateRegistry, Summary, ExecutionCount, FunctionName, LineNumber };
+use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 
 #[derive(Debug, Clone)]
 pub struct Functions {
@@ -34,6 +34,23 @@ impl Summary<FunctionName, ExecutionCount> for Functions {
     fn get(&self, key: &FunctionName) -> Option<&ExecutionCount> {
         self.functions.get(key)
     }
+}
+
+impl HitCounter for Functions {
+    fn hit_count(&self) -> usize {
+        self.iter()
+            .filter(|&(_, execution_count)| *execution_count > 0)
+            .count()
+    }
+}
+
+impl FoundCounter for Functions {
+    fn found_count(&self) -> usize {
+        self.functions.len()
+    }
+}
+
+impl HitFoundCounter for Functions {
 }
 
 impl<'a> AddAssign<&'a FunctionData> for Functions {
@@ -103,6 +120,7 @@ mod tests {
     use lcov_parser:: { FunctionData };
     use result::function:: { Functions };
     use result::summary:: { Summary };
+    use result::summary::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn add_function_data() {
@@ -123,5 +141,16 @@ mod tests {
         functions += cloned_functions;
 
         assert_eq!( functions.get(&"main".to_string()), Some(&2u32) );
+    }
+
+    #[test]
+    fn hit_count_and_found_count() {
+        let mut functions = Functions::new();
+        functions += &FunctionData { name: "main".to_string(), count: 1 };
+        functions += &FunctionData { name: "main".to_string(), count: 0 };
+        functions += &FunctionData { name: "foo".to_string(), count: 0 };
+
+        assert_eq!( functions.hit_count(), 1 );
+        assert_eq!( functions.found_count(), 2 );
     }
 }

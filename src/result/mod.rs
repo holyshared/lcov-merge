@@ -1,4 +1,4 @@
-mod summary;
+pub mod summary;
 mod file;
 mod branch;
 mod line;
