@@ -1,14 +1,15 @@
+use std::fs:: { OpenOptions, File as OutputFile };
 use std::result:: { Result };
-//use std::collections:: { HashMap };
+use std::io:: { Result as IOResult };
+use std::io::prelude::*;
+use std::path::Path;
 use lcov_parser:: {
     LCOVParser, LCOVRecord, LineData, FunctionData as FunctionDataRecord,
     BranchData as BranchDataRecord,
     FunctionName, ParseError, FromFile
 };
 use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
-
-//use test:: { Test, TestSum };
-//use file:: { File, CheckSum, FunctionData };
+use result::summary::counter:: { FoundCounter, HitCounter };
 
 /// Read the trace file of LCOV
 ///
@@ -30,7 +31,7 @@ use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
 ///
 /// assert_eq!(fixture.get_test(&"example".to_string()).unwrap().get_line_count(&4), Some(&1));
 /// ```
-pub fn parse_file(file: &str) -> Result<Report, ParseError> {
+pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
 }
@@ -57,7 +58,7 @@ impl ReportParser {
             files: Files::new()
         }
     }
-    fn parse(&mut self, file: &str) -> Result<Report, ParseError> {
+    fn parse<T: AsRef<Path>>(&mut self, file: T) -> Result<Report, ParseError> {
         let mut parser = try!(LCOVParser::from_file(file));
 
         loop {
@@ -164,5 +165,63 @@ impl Report {
     }
     pub fn len(&self) -> usize {
         self.files.len()
+    }
+    pub fn save_as<T: AsRef<Path>>(&self, path: T) -> IOResult<()> {
+        let mut output = try!(OpenOptions::new().create(true).write(true).open(path));
+        self.write_to::<OutputFile>(&mut output)
+    }
+    pub fn write_to<T: Write>(&self, output: &mut T) -> IOResult<()> {
+        for (source_name, file) in self.files.iter() {
+            for (test_name, test) in file.tests().iter() {
+                try!(writeln!(output, "TN:{}", test_name));
+                try!(writeln!(output, "SF:{}", source_name));
+
+                for (function_name, line_number) in file.func().iter() {
+                    let functions = test.functions();
+                    let execution_count = functions.get(function_name).unwrap();
+
+                    try!(writeln!(output, "FN:{},{}", line_number, function_name));
+                    try!(writeln!(output, "FNDA:{},{}", execution_count, function_name));
+                    try!(writeln!(output, "FNF:{}", functions.hit_count()));
+                    try!(writeln!(output, "FNH:{}", functions.found_count()));
+                }
+
+                for (line_number, blocks) in test.branches().iter() {
+                    for (unit, taken) in blocks.iter() {
+                        try!(writeln!(output, "BRDA:{},{},{},{}",
+                            line_number, unit.block(), unit.branch(), taken));
+                    }
+                }
+                try!(writeln!(output, "BRF:{}", test.branches().found_count()));
+                try!(writeln!(output, "BRH:{}", test.branches().hit_count()));
+
+                for (line_number, execution_count) in test.lines().iter() {
+                    let checksums = file.checksum();
+                    let _ = match checksums.get(line_number) {
+                        Some(checksum) => try!(writeln!(output, "DA:{},{},{}", line_number, execution_count, checksum)),
+                        None => try!(writeln!(output, "DA:{},{}", line_number, execution_count))
+                    };
+                }
+                try!(writeln!(output, "LF:{}", test.lines().hit_count()));
+                try!(writeln!(output, "LH:{}", test.lines().found_count()));
+                try!(writeln!(output, "end_of_record"));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use report::*;
+    use std::path::Path;
+
+    #[test]
+    fn save_as() {
+        let report_path = "tests/fixtures/fixture1.info";
+        let report = parse_file(report_path).unwrap();
+        let _ = report.save_as("/tmp/report.lcov").unwrap();
+
+        assert_eq!(Path::new("/tmp/report.lcov").exists(), true);
     }
 }

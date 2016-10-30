@@ -32,6 +32,12 @@ impl BranchUnit {
     pub fn new(block: u32, branch: u32) -> BranchUnit {
         BranchUnit(block, branch)
     }
+    pub fn block(&self) -> u32 {
+        self.0
+    }
+    pub fn branch(&self) -> u32 {
+        self.1
+    }
 }
 
 impl PartialEq for BranchUnit {
