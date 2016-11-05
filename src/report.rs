@@ -13,26 +13,6 @@ use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
 use result::summary::counter:: { FoundCounter, HitCounter };
 use record:: { RecordWriter };
 
-/// Read the trace file of LCOV
-///
-/// # Examples
-///
-/// ```
-/// use lcov_merge::parse_file;
-///
-/// let report = parse_file("tests/fixtures/fixture1.info").unwrap();
-/// assert_eq!(report.len(), 3);
-///
-/// let fixture = report.get("/home/vagrant/shared/lcov-merge/tests/fixtures/fixture.c").unwrap();
-///
-/// assert_eq!(fixture.sum().get_line_count(&4), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&6), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&7), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&8), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&1), None);
-///
-/// assert_eq!(fixture.get_test(&"example".to_string()).unwrap().get_line_count(&4), Some(&1));
-/// ```
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
@@ -201,16 +181,7 @@ impl fmt::Display for Report {
                     try!(writeln!(f, "FNH:{}", functions.found_count()));
                 }
                 try!(write!(f, "{}", test.branches()));
-
-                for (line_number, execution_count) in test.lines().iter() {
-                    let checksums = file.checksum();
-                    let _ = match checksums.get(line_number) {
-                        Some(checksum) => try!(writeln!(f, "DA:{},{},{}", line_number, execution_count, checksum)),
-                        None => try!(writeln!(f, "DA:{},{}", line_number, execution_count))
-                    };
-                }
-                try!(writeln!(f, "LF:{}", test.lines().found_count()));
-                try!(writeln!(f, "LH:{}", test.lines().hit_count()));
+                try!(write!(f, "{}", test.lines()));
                 try!(writeln!(f, "end_of_record"));
             }
         }

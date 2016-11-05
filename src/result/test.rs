@@ -44,11 +44,11 @@ impl Test {
     pub fn branches(&self) -> &Branches {
         &self.branch
     }
-
+/*
     pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
         self.line.get(line_number)
     }
-
+*/
     pub fn get_func_count(&self, func_name: &String) -> Option<&u32> {
         self.func.get(func_name)
     }
@@ -66,8 +66,8 @@ impl Test {
 
 
 impl<'a> AddAssign<&'a LineData> for Test {
-    fn add_assign(&mut self, data: &'a LineData) {
-        self.line += data;
+    fn add_assign(&mut self, line_data: &'a LineData) {
+        self.line += line_data;
     }
 }
 
@@ -237,9 +237,11 @@ impl<'a> AddAssign<&'a Tests> for Tests {
 mod tests {
     use result::summary:: { Summary };
     use result::test:: { Test, Tests };
+    use result::line:: { Line };
     use result::branch:: { BranchUnit, BranchBlocks };
     use lcov_parser:: { LineData, FunctionData, BranchData };
 
+/*
     #[test]
     fn add_line_data() {
         let mut test = Test::new();
@@ -250,7 +252,7 @@ mod tests {
         test += &LineData { line: 1, count: 1, checksum: None };
         assert_eq!( test.get_line_count(&1), Some(&2u32) );
     }
-
+*/
     #[test]
     fn add_func_data() {
         let mut test = Test::new();
@@ -299,7 +301,8 @@ mod tests {
         };
         test1 += &test2;
 
-        assert_eq!( test1.get_line_count(&1), Some(&2u32) );
+        let lines = test1.lines();
+        assert_eq!( lines.get(&1), Some(&Line::new(1, 2, None)) );
         assert_eq!( test1.get_func_count(&"main".to_string()), Some(&2u32) );
 
         let mut branches = BranchBlocks::new();
@@ -329,7 +332,7 @@ mod tests {
         let branches = test.branches();
         let branch_blocks = branches.get(&1).unwrap();
 
-        assert_eq!( lines.get(&1), Some(&1));
+        assert_eq!( lines.get(&1), Some(&Line::new(1, 1, None)));
         assert_eq!( functions.get(&function_name), Some(&1));
         assert_eq!( branch_blocks.get(&BranchUnit::new(1, 1)), Some(&1));
     }
