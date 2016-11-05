@@ -1,6 +1,6 @@
 use std::fmt:: { Display, Formatter, Result };
 use std::ops::AddAssign;
-use std::collections::hash_map:: { Iter };
+use std::collections::btree_map:: { Iter };
 use std::convert::AsRef;
 use lcov_parser:: { BranchData };
 use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
