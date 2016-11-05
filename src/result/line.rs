@@ -34,6 +34,9 @@ impl Summary<LineNumber, ExecutionCount> for Lines {
     fn get(&self, key: &LineNumber) -> Option<&ExecutionCount> {
         self.lines.get(key)
     }
+    fn len(&self) -> usize {
+        self.lines.len()
+    }
 }
 
 impl HitCounter for Lines {
@@ -93,6 +96,9 @@ impl Summary<LineNumber, CheckSum> for CheckSums {
     }
     fn get(&self, key: &LineNumber) -> Option<&CheckSum> {
         self.checksums.get(key)
+    }
+    fn len(&self) -> usize {
+        self.checksums.len()
     }
 }
 

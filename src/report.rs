@@ -3,6 +3,7 @@ use std::result:: { Result };
 use std::io:: { Result as IOResult };
 use std::io::prelude::*;
 use std::path::Path;
+use std::fmt;
 use lcov_parser:: {
     LCOVParser, LCOVRecord, LineData, FunctionData as FunctionDataRecord,
     BranchData as BranchDataRecord,
@@ -10,6 +11,7 @@ use lcov_parser:: {
 };
 use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
 use result::summary::counter:: { FoundCounter, HitCounter };
+use record:: { RecordWriter };
 
 /// Read the trace file of LCOV
 ///
@@ -144,6 +146,10 @@ impl ReportParser {
             self.func.clone()
         );
         self.files += (source_name, &file);
+        self.sum = TestSum::new();
+        self.tests = Tests::new();
+        self.checksum = CheckSums::new();
+        self.func = FunctionNames::new();
     }
 }
 
@@ -170,41 +176,42 @@ impl Report {
         let mut output = try!(OpenOptions::new().create(true).write(true).open(path));
         self.write_to::<OutputFile>(&mut output)
     }
-    pub fn write_to<T: Write>(&self, output: &mut T) -> IOResult<()> {
+}
+
+impl RecordWriter for Report {
+    fn write_to<T: Write>(&self, output: &mut T) -> IOResult<()> {
+        writeln!(output, "{}", self)
+    }
+}
+
+impl fmt::Display for Report {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (source_name, file) in self.files.iter() {
             for (test_name, test) in file.tests().iter() {
-                try!(writeln!(output, "TN:{}", test_name));
-                try!(writeln!(output, "SF:{}", source_name));
+                try!(writeln!(f, "TN:{}", test_name));
+                try!(writeln!(f, "SF:{}", source_name));
 
                 for (function_name, line_number) in file.func().iter() {
                     let functions = test.functions();
                     let execution_count = functions.get(function_name).unwrap();
 
-                    try!(writeln!(output, "FN:{},{}", line_number, function_name));
-                    try!(writeln!(output, "FNDA:{},{}", execution_count, function_name));
-                    try!(writeln!(output, "FNF:{}", functions.hit_count()));
-                    try!(writeln!(output, "FNH:{}", functions.found_count()));
+                    try!(writeln!(f, "FN:{},{}", line_number, function_name));
+                    try!(writeln!(f, "FNDA:{},{}", execution_count, function_name));
+                    try!(writeln!(f, "FNF:{}", functions.hit_count()));
+                    try!(writeln!(f, "FNH:{}", functions.found_count()));
                 }
-
-                for (line_number, blocks) in test.branches().iter() {
-                    for (unit, taken) in blocks.iter() {
-                        try!(writeln!(output, "BRDA:{},{},{},{}",
-                            line_number, unit.block(), unit.branch(), taken));
-                    }
-                }
-                try!(writeln!(output, "BRF:{}", test.branches().found_count()));
-                try!(writeln!(output, "BRH:{}", test.branches().hit_count()));
+                try!(write!(f, "{}", test.branches()));
 
                 for (line_number, execution_count) in test.lines().iter() {
                     let checksums = file.checksum();
                     let _ = match checksums.get(line_number) {
-                        Some(checksum) => try!(writeln!(output, "DA:{},{},{}", line_number, execution_count, checksum)),
-                        None => try!(writeln!(output, "DA:{},{}", line_number, execution_count))
+                        Some(checksum) => try!(writeln!(f, "DA:{},{},{}", line_number, execution_count, checksum)),
+                        None => try!(writeln!(f, "DA:{},{}", line_number, execution_count))
                     };
                 }
-                try!(writeln!(output, "LF:{}", test.lines().hit_count()));
-                try!(writeln!(output, "LH:{}", test.lines().found_count()));
-                try!(writeln!(output, "end_of_record"));
+                try!(writeln!(f, "LF:{}", test.lines().found_count()));
+                try!(writeln!(f, "LH:{}", test.lines().hit_count()));
+                try!(writeln!(f, "end_of_record"));
             }
         }
         Ok(())
@@ -215,6 +222,8 @@ impl Report {
 mod tests {
     use report::*;
     use std::path::Path;
+    use std::fs::File;
+    use std::io::*;
 
     #[test]
     fn save_as() {
@@ -223,5 +232,18 @@ mod tests {
         let _ = report.save_as("/tmp/report.lcov").unwrap();
 
         assert_eq!(Path::new("/tmp/report.lcov").exists(), true);
+    }
+
+    #[test]
+    fn display() {
+        let report_path = "tests/fixtures/fixture1.info";
+        let readed_file_content = {
+            let mut output = String::new();
+            let mut f = File::open(report_path).unwrap();
+            f.read_to_string(&mut output);
+            output
+        };
+        let report = parse_file(report_path).unwrap();
+        assert_eq!(report.to_string(), readed_file_content);
     }
 }

@@ -2,7 +2,9 @@ use std::fmt:: { Display, Formatter, Result };
 use std::ops::AddAssign;
 use std::collections::btree_map:: { Iter };
 use std::convert::AsRef;
+use std::io;
 use lcov_parser:: { BranchData };
+use record:: { RecordWriter };
 use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
 use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 
@@ -72,6 +74,9 @@ impl Summary<BranchUnit, ExecutionCount> for BranchBlocks {
     }
     fn get(&self, key: &BranchUnit) -> Option<&ExecutionCount> {
         self.blocks.get(key)
+    }
+    fn len(&self) -> usize {
+        self.blocks.len()
     }
 }
 
@@ -160,6 +165,32 @@ impl Summary<LineNumber, BranchBlocks> for Branches {
     }
     fn get(&self, key: &LineNumber) -> Option<&BranchBlocks> {
         self.branches.get(key)
+    }
+    fn len(&self) -> usize {
+        self.branches.len()
+    }
+}
+
+impl RecordWriter for Branches {
+    fn write_to<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
+        write!(output, "{}", self)
+    }
+}
+
+impl Display for Branches {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        if self.is_empty() {
+            return Ok(());
+        }
+        for (line_number, blocks) in self.iter() {
+            for (unit, taken) in blocks.iter() {
+                try!(writeln!(f, "BRDA:{},{},{},{}",
+                    line_number, unit.block(), unit.branch(), taken));
+            }
+        }
+        try!(writeln!(f, "BRF:{}", self.found_count()));
+        try!(writeln!(f, "BRH:{}", self.hit_count()));
+        Ok(())
     }
 }
 

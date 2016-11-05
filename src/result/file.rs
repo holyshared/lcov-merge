@@ -66,9 +66,6 @@ impl Files {
             files: AggregateResult::new()
         }
     }
-    pub fn len(&self) -> usize {
-        self.files.len()
-    }
 }
 
 impl Summary<SourceFile, File> for Files {
@@ -80,6 +77,9 @@ impl Summary<SourceFile, File> for Files {
     }
     fn get(&self, key: &SourceFile) -> Option<&File> {
         self.files.get(key)
+    }
+    fn len(&self) -> usize {
+        self.files.len()
     }
 }
 

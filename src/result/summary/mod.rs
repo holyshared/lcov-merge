@@ -18,6 +18,10 @@ pub trait Summary<K, V> {
     fn iter(&self) -> Iter<K, V>;
     fn contains_key(&self, k: &K) -> bool;
     fn get(&self, key: &K) -> Option<&V>;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() <= 0
+    }
 }
 
 #[derive(Clone)]
@@ -37,9 +41,6 @@ impl<K: Ord, V: Clone> AggregateResult<K, V> {
     pub fn entry(&mut self, k: K) -> Entry<K, V> {
         self.results.entry(k)
     }
-    pub fn len(&self) -> usize {
-        self.results.len()
-    }
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.results.insert(k, v)
     }
@@ -54,6 +55,9 @@ impl<K: Ord, V: Clone> Summary<K, V> for AggregateResult<K, V> {
     }
     fn get(&self, key: &K) -> Option<&V> {
         self.results.get(key)
+    }
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 
@@ -102,9 +106,6 @@ impl<K: Ord, V: Clone> AggregateRegistry<K, V> {
     pub fn entry(&mut self, k: K) -> Entry<K, V> {
         self.results.entry(k)
     }
-    pub fn len(&self) -> usize {
-        self.results.len()
-    }
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.results.insert(k, v)
     }
@@ -119,6 +120,9 @@ impl<K: Ord, V: Clone> Summary<K, V> for AggregateRegistry<K, V> {
     }
     fn get(&self, key: &K) -> Option<&V> {
         self.results.get(key)
+    }
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 

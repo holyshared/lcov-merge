@@ -163,6 +163,9 @@ impl Summary<TestName, Test> for Tests {
     fn get(&self, key: &TestName) -> Option<&Test> {
         self.tests.get(key)
     }
+    fn len(&self) -> usize {
+        self.tests.len()
+    }
 }
 
 impl AsRef<AggregateResult<TestName, Test>> for Tests {

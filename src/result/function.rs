@@ -34,6 +34,9 @@ impl Summary<FunctionName, ExecutionCount> for Functions {
     fn get(&self, key: &FunctionName) -> Option<&ExecutionCount> {
         self.functions.get(key)
     }
+    fn len(&self) -> usize {
+        self.functions.len()
+    }
 }
 
 impl HitCounter for Functions {
@@ -90,6 +93,9 @@ impl Summary<FunctionName, LineNumber> for FunctionNames {
     }
     fn get(&self, key: &FunctionName) -> Option<&LineNumber> {
         self.functions.get(key)
+    }
+    fn len(&self) -> usize {
+        self.functions.len()
     }
 }
 
