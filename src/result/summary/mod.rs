@@ -1,9 +1,7 @@
 use std::cmp:: { Eq, PartialEq };
 use std::clone::Clone;
 use std::convert::AsRef;
-use std::hash:: { Hash };
-use std::collections:: { HashMap };
-use std::collections::hash_map:: { Entry, Iter };
+use std::collections::btree_map:: { BTreeMap, Entry, Iter };
 use std::fmt:: { Debug, Formatter, Result };
 use std::ops::AddAssign;
 
@@ -24,13 +22,13 @@ pub trait Summary<K, V> {
 
 #[derive(Clone)]
 pub struct AggregateResult<K, V> {
-    results: HashMap<K, V>
+    results: BTreeMap<K, V>
 }
 
-impl<K: Hash + Eq, V: Clone> AggregateResult<K, V> {
+impl<K: Ord, V: Clone> AggregateResult<K, V> {
     pub fn new() -> Self {
         AggregateResult {
-            results: HashMap::new()
+            results: BTreeMap::new()
         }
     }
     pub fn get_mut(&mut self , key: &K) -> Option<&mut V> {
@@ -47,7 +45,7 @@ impl<K: Hash + Eq, V: Clone> AggregateResult<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Clone> Summary<K, V> for AggregateResult<K, V> {
+impl<K: Ord, V: Clone> Summary<K, V> for AggregateResult<K, V> {
     fn iter(&self) -> Iter<K, V> {
         self.results.iter()
     }
@@ -59,25 +57,25 @@ impl<K: Hash + Eq, V: Clone> Summary<K, V> for AggregateResult<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Clone> AsRef<HashMap<K, V>> for AggregateResult<K, V> {
-    fn as_ref(&self) -> &HashMap<K, V> {
+impl<K: Ord, V: Clone> AsRef<BTreeMap<K, V>> for AggregateResult<K, V> {
+    fn as_ref(&self) -> &BTreeMap<K, V> {
         &self.results
     }
 }
 
-impl<K: Hash + Eq, V: Eq + Clone> PartialEq for AggregateResult<K, V> {
+impl<K: Ord, V: Eq + Clone> PartialEq for AggregateResult<K, V> {
     fn eq(&self, other: &AggregateResult<K, V>) -> bool {
         &self.results == other.as_ref()
     }
 }
 
-impl<K: Hash + Eq + Debug, V: Debug> Debug for AggregateResult<K, V> {
+impl<K: Ord + Debug, V: Debug> Debug for AggregateResult<K, V> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:?}", self.results)
     }
 }
 
-impl<'a, K: Hash + Eq + Clone, V: AddAssign + Clone> AddAssign<&'a AggregateResult<K, V>> for AggregateResult<K, V> {
+impl<'a, K: Ord + Clone, V: AddAssign + Clone> AddAssign<&'a AggregateResult<K, V>> for AggregateResult<K, V> {
     fn add_assign(&mut self, other: &'a AggregateResult<K, V>) {
         for (unit, count) in other.iter() {
             if self.results.contains_key(unit) {
@@ -92,13 +90,13 @@ impl<'a, K: Hash + Eq + Clone, V: AddAssign + Clone> AddAssign<&'a AggregateResu
 
 #[derive(Clone)]
 pub struct AggregateRegistry<K, V> {
-    results: HashMap<K, V>
+    results: BTreeMap<K, V>
 }
 
-impl<K: Hash + Eq, V: Clone> AggregateRegistry<K, V> {
+impl<K: Ord, V: Clone> AggregateRegistry<K, V> {
     pub fn new() -> Self {
         AggregateRegistry {
-            results: HashMap::new()
+            results: BTreeMap::new()
         }
     }
     pub fn entry(&mut self, k: K) -> Entry<K, V> {
@@ -112,7 +110,7 @@ impl<K: Hash + Eq, V: Clone> AggregateRegistry<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Clone> Summary<K, V> for AggregateRegistry<K, V> {
+impl<K: Ord, V: Clone> Summary<K, V> for AggregateRegistry<K, V> {
     fn iter(&self) -> Iter<K, V> {
         self.results.iter()
     }
@@ -124,25 +122,25 @@ impl<K: Hash + Eq, V: Clone> Summary<K, V> for AggregateRegistry<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V: Clone> AsRef<HashMap<K, V>> for AggregateRegistry<K, V> {
-    fn as_ref(&self) -> &HashMap<K, V> {
+impl<K: Ord, V: Clone> AsRef<BTreeMap<K, V>> for AggregateRegistry<K, V> {
+    fn as_ref(&self) -> &BTreeMap<K, V> {
         &self.results
     }
 }
 
-impl<K: Hash + Eq, V: Eq + Clone> PartialEq for AggregateRegistry<K, V> {
+impl<K: Ord, V: Eq + Clone> PartialEq for AggregateRegistry<K, V> {
     fn eq(&self, other: &AggregateRegistry<K, V>) -> bool {
         &self.results == other.as_ref()
     }
 }
 
-impl<K: Hash + Eq + Debug, V: Debug> Debug for AggregateRegistry<K, V> {
+impl<K: Ord + Debug, V: Debug> Debug for AggregateRegistry<K, V> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:?}", self.results)
     }
 }
 
-impl<'a, K: Hash + Eq + Clone, V: Clone> AddAssign<&'a AggregateRegistry<K, V>> for AggregateRegistry<K, V> {
+impl<'a, K: Ord + Clone, V: Clone> AddAssign<&'a AggregateRegistry<K, V>> for AggregateRegistry<K, V> {
     fn add_assign(&mut self, other: &'a AggregateRegistry<K, V>) {
         for (key, value) in other.iter() {
             if self.results.contains_key(key) {

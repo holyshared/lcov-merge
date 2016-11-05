@@ -1,5 +1,5 @@
 use std::ops::AddAssign;
-use std::collections::hash_map:: { Iter };
+use std::collections::btree_map:: { Iter };
 use std::convert::AsRef;
 use lcov_parser:: { FunctionName as FunctionNameRecord, FunctionData };
 use result::summary:: { AggregateResult, AggregateRegistry, Summary, ExecutionCount, FunctionName, LineNumber };

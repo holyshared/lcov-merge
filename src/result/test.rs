@@ -1,7 +1,7 @@
 use std::default:: { Default };
 use std::ops::AddAssign;
 use std::convert::AsRef;
-use std::collections::hash_map:: { Iter };
+use std::collections::btree_map:: { Iter };
 use result::line:: { Lines };
 use result::function:: { Functions };
 use result::branch:: { Branches, BranchBlocks };

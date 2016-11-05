@@ -1,8 +1,6 @@
-use std::hash:: { Hash, Hasher };
-use std::cmp:: { Eq, PartialEq };
 use std::fmt:: { Display, Formatter, Result };
 use std::ops::AddAssign;
-use std::collections::hash_map:: { Iter };
+use std::collections::btree_map:: { Iter };
 use std::convert::AsRef;
 use lcov_parser:: { BranchData };
 use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
@@ -25,7 +23,7 @@ use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 ///
 /// assert!(not_eq_branch1 != not_eq_branch2);
 /// ```
-#[derive(Debug, Eq, Clone)]
+#[derive(Debug, Hash, Ord, PartialOrd, PartialEq, Eq, Clone)]
 pub struct BranchUnit(u32, u32);
 
 impl BranchUnit {
@@ -37,19 +35,6 @@ impl BranchUnit {
     }
     pub fn branch(&self) -> u32 {
         self.1
-    }
-}
-
-impl PartialEq for BranchUnit {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
-    }
-}
-
-impl Hash for BranchUnit {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-        self.1.hash(state);
     }
 }
 

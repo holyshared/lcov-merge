@@ -1,6 +1,6 @@
 use std::ops::AddAssign;
 use std::convert::AsRef;
-use std::collections::hash_map:: { Iter };
+use std::collections::btree_map:: { Iter };
 use result::test:: { Test, Tests, TestSum };
 use result::function:: { FunctionNames };
 use result::line:: { CheckSums };
