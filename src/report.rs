@@ -10,29 +10,8 @@ use lcov_parser:: {
     FunctionName, ParseError, FromFile
 };
 use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
-use result::summary::counter:: { FoundCounter, HitCounter };
 use record:: { RecordWriter };
 
-/// Read the trace file of LCOV
-///
-/// # Examples
-///
-/// ```
-/// use lcov_merge::parse_file;
-///
-/// let report = parse_file("tests/fixtures/fixture1.info").unwrap();
-/// assert_eq!(report.len(), 3);
-///
-/// let fixture = report.get("/home/vagrant/shared/lcov-merge/tests/fixtures/fixture.c").unwrap();
-///
-/// assert_eq!(fixture.sum().get_line_count(&4), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&6), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&7), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&8), Some(&1));
-/// assert_eq!(fixture.sum().get_line_count(&1), None);
-///
-/// assert_eq!(fixture.get_test(&"example".to_string()).unwrap().get_line_count(&4), Some(&1));
-/// ```
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
@@ -116,6 +95,13 @@ impl ReportParser {
     }
     fn on_func_name(&mut self, func_name: &FunctionName) {
         self.func += func_name;
+
+        if self.test_name.is_none() {
+            return;
+        }
+
+        let test_name = self.test_name.as_ref().unwrap();
+        self.tests += (test_name, func_name);
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
         self.sum += func_data;
@@ -190,27 +176,9 @@ impl fmt::Display for Report {
             for (test_name, test) in file.tests().iter() {
                 try!(writeln!(f, "TN:{}", test_name));
                 try!(writeln!(f, "SF:{}", source_name));
-
-                for (function_name, line_number) in file.func().iter() {
-                    let functions = test.functions();
-                    let execution_count = functions.get(function_name).unwrap();
-
-                    try!(writeln!(f, "FN:{},{}", line_number, function_name));
-                    try!(writeln!(f, "FNDA:{},{}", execution_count, function_name));
-                    try!(writeln!(f, "FNF:{}", functions.hit_count()));
-                    try!(writeln!(f, "FNH:{}", functions.found_count()));
-                }
+                try!(write!(f, "{}", test.functions()));
                 try!(write!(f, "{}", test.branches()));
-
-                for (line_number, execution_count) in test.lines().iter() {
-                    let checksums = file.checksum();
-                    let _ = match checksums.get(line_number) {
-                        Some(checksum) => try!(writeln!(f, "DA:{},{},{}", line_number, execution_count, checksum)),
-                        None => try!(writeln!(f, "DA:{},{}", line_number, execution_count))
-                    };
-                }
-                try!(writeln!(f, "LF:{}", test.lines().found_count()));
-                try!(writeln!(f, "LH:{}", test.lines().hit_count()));
+                try!(write!(f, "{}", test.lines()));
                 try!(writeln!(f, "end_of_record"));
             }
         }
