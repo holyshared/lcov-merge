@@ -13,7 +13,7 @@ use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
 /// # Examples
 ///
 /// ```
-/// use lcov_merge::BranchUnit;
+/// use lcov_merge::branch::BranchUnit;
 ///
 /// let branch1 = BranchUnit::new(1, 1);
 /// let branch2 = BranchUnit::new(1, 1);

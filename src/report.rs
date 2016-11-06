@@ -9,7 +9,11 @@ use lcov_parser:: {
     BranchData as BranchDataRecord,
     FunctionName, ParseError, FromFile
 };
-use result:: { Summary, Tests, File, Files, CheckSums };
+
+use result::summary:: { Summary };
+use result::test:: { Tests };
+use result::file:: { File, Files };
+use result::line:: { CheckSums };
 use record:: { RecordWriter };
 
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
@@ -189,7 +193,7 @@ mod tests {
         let readed_file_content = {
             let mut output = String::new();
             let mut f = File::open(report_path).unwrap();
-            f.read_to_string(&mut output);
+            let _ = f.read_to_string(&mut output);
             output
         };
         let report = parse_file(report_path).unwrap();
