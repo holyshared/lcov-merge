@@ -6,7 +6,7 @@ use result::line:: { Lines };
 use result::function:: { Functions };
 use result::branch:: { Branches, BranchBlocks };
 use result::summary:: { TestName, AggregateResult, Summary };
-use lcov_parser:: { LineData, FunctionData, BranchData };
+use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
 
 pub type TestSum = Test;
 
@@ -44,15 +44,6 @@ impl Test {
     pub fn branches(&self) -> &Branches {
         &self.branch
     }
-/*
-    pub fn get_line_count(&self, line_number: &u32) -> Option<&u32> {
-        self.line.get(line_number)
-    }
-*/
-    pub fn get_func_count(&self, func_name: &String) -> Option<&u32> {
-        self.func.get(func_name)
-    }
-
     pub fn get_branch_count(&self, line_number: &u32) -> Option<&BranchBlocks> {
         self.branch.get(line_number)
     }
@@ -68,6 +59,12 @@ impl Test {
 impl<'a> AddAssign<&'a LineData> for Test {
     fn add_assign(&mut self, line_data: &'a LineData) {
         self.line += line_data;
+    }
+}
+
+impl<'a> AddAssign<&'a FunctionName> for Test {
+    fn add_assign(&mut self, data: &'a FunctionName) {
+        self.func += data;
     }
 }
 
@@ -200,6 +197,16 @@ impl<'a> AddAssign<(&'a String, &'a LineData)> for Tests {
     }
 }
 
+impl<'a> AddAssign<(&'a String, &'a FunctionName)> for Tests {
+    fn add_assign(&mut self, other: (&'a String, &'a FunctionName)) {
+        if !self.tests.contains_key(&other.0) {
+            self.tests.insert(other.0.clone(), Test::new());
+        }
+        let mut test = self.tests.get_mut(&other.0).unwrap();
+        *test += other.1;
+    }
+}
+
 impl<'a> AddAssign<(&'a String, &'a FunctionData)> for Tests {
     fn add_assign(&mut self, other: (&'a String, &'a FunctionData)) {
         if !self.tests.contains_key(&other.0) {
@@ -238,32 +245,9 @@ mod tests {
     use result::summary:: { Summary };
     use result::test:: { Test, Tests };
     use result::line:: { Line };
+    use result::function:: { Function };
     use result::branch:: { BranchUnit, BranchBlocks };
     use lcov_parser:: { LineData, FunctionData, BranchData };
-
-/*
-    #[test]
-    fn add_line_data() {
-        let mut test = Test::new();
-
-        test += &LineData { line: 1, count: 1, checksum: None };
-        assert_eq!( test.get_line_count(&1), Some(&1u32) );
-
-        test += &LineData { line: 1, count: 1, checksum: None };
-        assert_eq!( test.get_line_count(&1), Some(&2u32) );
-    }
-*/
-    #[test]
-    fn add_func_data() {
-        let mut test = Test::new();
-
-        test += &FunctionData { name: "main".to_string(), count: 1 };
-        assert_eq!( test.get_func_count(&"main".to_string()), Some(&1u32) );
-
-        test += &FunctionData { name: "main".to_string(), count: 1 };
-        assert_eq!( test.get_func_count(&"main".to_string()), Some(&2u32) );
-    }
-
 
     #[test]
     fn add_branch_data() {
@@ -303,7 +287,9 @@ mod tests {
 
         let lines = test1.lines();
         assert_eq!( lines.get(&1), Some(&Line::new(1, 2, None)) );
-        assert_eq!( test1.get_func_count(&"main".to_string()), Some(&2u32) );
+
+        let functions = test1.functions();
+        assert_eq!( functions.get(&"main".to_string()), Some( &Function::new("main".to_string(), 0, 2)));
 
         let mut branches = BranchBlocks::new();
         branches += &BranchData { line: 1, block: 1, branch: 1, taken: 2 };
@@ -333,7 +319,7 @@ mod tests {
         let branch_blocks = branches.get(&1).unwrap();
 
         assert_eq!( lines.get(&1), Some(&Line::new(1, 1, None)));
-        assert_eq!( functions.get(&function_name), Some(&1));
+        assert_eq!( functions.get(&function_name), Some( &Function::new("main".to_string(), 0, 1)));
         assert_eq!( branch_blocks.get(&BranchUnit::new(1, 1)), Some(&1));
     }
 }

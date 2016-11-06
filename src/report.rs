@@ -10,7 +10,6 @@ use lcov_parser:: {
     FunctionName, ParseError, FromFile
 };
 use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
-use result::summary::counter:: { FoundCounter, HitCounter };
 use record:: { RecordWriter };
 
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
@@ -96,6 +95,13 @@ impl ReportParser {
     }
     fn on_func_name(&mut self, func_name: &FunctionName) {
         self.func += func_name;
+
+        if self.test_name.is_none() {
+            return;
+        }
+
+        let test_name = self.test_name.as_ref().unwrap();
+        self.tests += (test_name, func_name);
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
         self.sum += func_data;
@@ -170,16 +176,7 @@ impl fmt::Display for Report {
             for (test_name, test) in file.tests().iter() {
                 try!(writeln!(f, "TN:{}", test_name));
                 try!(writeln!(f, "SF:{}", source_name));
-
-                for (function_name, line_number) in file.func().iter() {
-                    let functions = test.functions();
-                    let execution_count = functions.get(function_name).unwrap();
-
-                    try!(writeln!(f, "FN:{},{}", line_number, function_name));
-                    try!(writeln!(f, "FNDA:{},{}", execution_count, function_name));
-                    try!(writeln!(f, "FNF:{}", functions.hit_count()));
-                    try!(writeln!(f, "FNH:{}", functions.found_count()));
-                }
+                try!(write!(f, "{}", test.functions()));
                 try!(write!(f, "{}", test.branches()));
                 try!(write!(f, "{}", test.lines()));
                 try!(writeln!(f, "end_of_record"));
