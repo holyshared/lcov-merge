@@ -10,4 +10,4 @@ pub use result::line:: { Lines, CheckSums };
 pub use result::branch:: { Branches, BranchUnit };
 pub use result::function:: { FunctionNames };
 pub use result::file:: { File, Files };
-pub use result::test:: { Test, TestSum, Tests };
+pub use result::test:: { Test, Tests };

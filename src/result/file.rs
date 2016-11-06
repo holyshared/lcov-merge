@@ -1,32 +1,19 @@
 use std::ops::AddAssign;
 use std::convert::AsRef;
 use std::collections::btree_map:: { Iter };
-use result::test:: { Test, Tests, TestSum };
-use result::function:: { FunctionNames };
-use result::line:: { CheckSums };
+use result::test:: { Test, Tests };
 use result::summary:: { SourceFile, AggregateResult, Summary };
 
 #[derive(Debug, Clone)]
 pub struct File {
-    sum: TestSum,
-    tests: Tests,
-    checksum: CheckSums,
-    func: FunctionNames
+    tests: Tests
 }
 
 impl File {
-    pub fn new(
-        sum: TestSum, tests: Tests, checksum: CheckSums, func: FunctionNames
-    ) -> Self {
+    pub fn new(tests: Tests) -> Self {
         File {
-            sum: sum,
-            tests: tests,
-            checksum: checksum,
-            func: func
+            tests: tests
         }
-    }
-    pub fn sum(&self) -> &TestSum {
-        &self.sum
     }
     pub fn tests(&self) -> &Tests {
         &self.tests
@@ -34,20 +21,11 @@ impl File {
     pub fn get_test(&self, name: &String) -> Option<&Test> {
         self.tests.get(name)
     }
-    pub fn checksum(&self) -> &CheckSums {
-        &self.checksum
-    }
-    pub fn func(&self) -> &FunctionNames {
-        &self.func
-    }
 }
 
 impl AddAssign for File {
     fn add_assign(&mut self, other: File) {
-        self.sum += other.sum();
         self.tests += other.tests();
-        self.checksum += other.checksum();
-        self.func += other.func();
     }
 }
 
@@ -98,9 +76,6 @@ impl<'a> AddAssign<(&'a SourceFile, &'a File)> for Files {
             let mut file = self.files.get_mut(other.0).unwrap();
             *file += other.1.clone();
         }
-
-
-//        self.files += other.as_ref();
     }
 }
 
