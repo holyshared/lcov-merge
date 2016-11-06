@@ -1,4 +1,6 @@
+use std::ops::AddAssign;
 use std::fs:: { OpenOptions, File as OutputFile };
+use std::convert::AsRef;
 use std::result:: { Result };
 use std::io:: { Result as IOResult };
 use std::io::prelude::*;
@@ -19,6 +21,28 @@ use record:: { RecordWriter };
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
+}
+
+pub fn merge_files<T: AsRef<Path> + fmt::Display>(files: &[T]) -> Result<Report, ParseError> {
+    let mut merged_report:Option<Report> = None;
+
+    for file in files.iter() {
+        let mut parse = ReportParser::new();
+        match parse.parse(file) {
+            Ok(report) => {
+                if merged_report.is_some() {
+                    let mut merged = merged_report.as_mut().unwrap();
+                    *merged += report;
+                } else {
+                    merged_report = Some(report);
+                }
+            },
+            Err(err) => {
+                return Err(err)
+            }
+        };
+    }
+    Ok(merged_report.unwrap())
 }
 
 struct ReportParser {
@@ -68,11 +92,11 @@ impl ReportParser {
             &Some(ref name) => Some(name.clone()),
             &None => Some(String::new())
         };
+        let current_test_name = self.test_name.as_ref().unwrap();
+        self.tests += current_test_name;
     }
     fn on_source_file(&mut self, source_name: &String) {
         self.source_name = Some(source_name.clone());
-        let current_test_name = self.test_name.as_ref().unwrap();
-        self.tests += current_test_name;
     }
     fn on_data(&mut self, line_data: &LineData) {
         if self.test_name.is_some() {
@@ -149,6 +173,18 @@ impl Report {
     }
 }
 
+impl AsRef<Files> for Report {
+    fn as_ref(&self) -> &Files {
+        &self.files
+    }
+}
+
+impl AddAssign for Report {
+    fn add_assign(&mut self, other: Report) {
+        self.files += other.as_ref();
+    }
+}
+
 impl RecordWriter for Report {
     fn write_to<T: Write>(&self, output: &mut T) -> IOResult<()> {
         writeln!(output, "{}", self)
@@ -177,6 +213,24 @@ mod tests {
     use std::path::Path;
     use std::fs::File;
     use std::io::*;
+
+    #[test]
+    fn merge_report_files() {
+        let report_path = "tests/fixtures/fixture1.info";
+        let report = merge_files(&[
+            report_path,
+            report_path
+        ]).unwrap();
+
+        let readed_file_content = {
+            let merged_report_path = "tests/fixtures/merged_fixture.info";
+            let mut output = String::new();
+            let mut f = File::open(merged_report_path).unwrap();
+            let _ = f.read_to_string(&mut output);
+            output
+        };
+        assert_eq!(report.to_string(), readed_file_content);
+    }
 
     #[test]
     fn save_as() {
