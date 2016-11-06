@@ -9,7 +9,11 @@ use lcov_parser:: {
     BranchData as BranchDataRecord,
     FunctionName, ParseError, FromFile
 };
-use result:: { Summary, Tests, TestSum, File, Files, CheckSums, FunctionNames };
+
+use result::summary:: { Summary };
+use result::test:: { Tests };
+use result::file:: { File, Files };
+use result::line:: { CheckSums };
 use record:: { RecordWriter };
 
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
@@ -21,9 +25,7 @@ struct ReportParser {
     test_name: Option<String>,
     source_name: Option<String>,
     tests: Tests,
-    sum: TestSum,
     checksum: CheckSums,
-    func: FunctionNames,
     files: Files
 }
 
@@ -33,9 +35,7 @@ impl ReportParser {
             test_name: None,
             source_name: None,
             tests: Tests::new(),
-            sum: TestSum::new(),
             checksum: CheckSums::new(),
-            func: FunctionNames::new(),
             files: Files::new()
         }
     }
@@ -75,8 +75,6 @@ impl ReportParser {
         self.tests += current_test_name;
     }
     fn on_data(&mut self, line_data: &LineData) {
-        self.sum += line_data;
-
         if self.test_name.is_some() {
             let test_name = self.test_name.as_ref().unwrap();
             self.tests += (test_name, line_data);
@@ -94,8 +92,6 @@ impl ReportParser {
         }
     }
     fn on_func_name(&mut self, func_name: &FunctionName) {
-        self.func += func_name;
-
         if self.test_name.is_none() {
             return;
         }
@@ -104,8 +100,6 @@ impl ReportParser {
         self.tests += (test_name, func_name);
     }
     fn on_func_data(&mut self, func_data: &FunctionDataRecord) {
-        self.sum += func_data;
-
         if self.test_name.is_none() {
             return;
         }
@@ -114,8 +108,6 @@ impl ReportParser {
         self.tests += (test_name, func_data);
     }
     fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
-        self.sum += branch_data;
-
         if self.test_name.is_none() {
             return;
         }
@@ -125,17 +117,10 @@ impl ReportParser {
     }
     fn on_end_of_record(&mut self) {
         let source_name = self.source_name.as_ref().unwrap();
-        let file = File::new(
-            self.sum.clone(),
-            self.tests.clone(),
-            self.checksum.clone(),
-            self.func.clone()
-        );
+        let file = File::new(self.tests.clone());
         self.files += (source_name, &file);
-        self.sum = TestSum::new();
         self.tests = Tests::new();
         self.checksum = CheckSums::new();
-        self.func = FunctionNames::new();
     }
 }
 
@@ -208,7 +193,7 @@ mod tests {
         let readed_file_content = {
             let mut output = String::new();
             let mut f = File::open(report_path).unwrap();
-            f.read_to_string(&mut output);
+            let _ = f.read_to_string(&mut output);
             output
         };
         let report = parse_file(report_path).unwrap();

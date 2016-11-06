@@ -8,8 +8,6 @@ use result::branch:: { Branches, BranchBlocks };
 use result::summary:: { TestName, AggregateResult, Summary };
 use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
 
-pub type TestSum = Test;
-
 #[derive(Debug, Clone)]
 pub struct Test {
     line: Lines,
@@ -96,46 +94,6 @@ impl<'a> AddAssign<&'a Test> for Test {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct NamedTest {
-    name: String,
-    test: Test
-}
-
-impl NamedTest {
-    pub fn new(name: String, test: Test) -> Self {
-        NamedTest {
-            name: name,
-            test: test
-        }
-    }
-    pub fn name(&self) -> &String {
-        &self.name
-    }
-    pub fn lines(&self) -> &Lines {
-        &self.test.line
-    }
-    pub fn functions(&self) -> &Functions {
-        &self.test.func
-    }
-    pub fn branches(&self) -> &Branches {
-        &self.test.branch
-    }
-}
-
-impl AsRef<Test> for NamedTest {
-    fn as_ref(&self) -> &Test {
-        &self.test
-    }
-}
-
-
-
-
-
-
-
-
 
 #[derive(Debug, Clone)]
 pub struct Tests {
@@ -168,13 +126,6 @@ impl Summary<TestName, Test> for Tests {
 impl AsRef<AggregateResult<TestName, Test>> for Tests {
     fn as_ref(&self) -> &AggregateResult<TestName, Test> {
         &self.tests
-    }
-}
-
-impl<'a> AddAssign<&'a NamedTest> for Tests {
-    fn add_assign(&mut self, other: &'a NamedTest) {
-        self.tests.entry(other.name().clone())
-            .or_insert(other.as_ref().clone());
     }
 }
 
