@@ -23,7 +23,7 @@ pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     parse.parse(file)
 }
 
-pub fn merge_files<T: AsRef<Path> + fmt::Display>(files: &[T]) -> Result<Report, ParseError> {
+pub fn merge_files<T: AsRef<Path>>(files: &[T]) -> Result<Report, ParseError> {
     let mut merged_report:Option<Report> = None;
 
     for file in files.iter() {
