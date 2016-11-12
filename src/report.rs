@@ -1,15 +1,15 @@
 use std::ops::AddAssign;
 use std::fs:: { OpenOptions, File as OutputFile };
-use std::convert::AsRef;
+use std::convert::{ AsRef, From };
 use std::result:: { Result };
-use std::io:: { Result as IOResult };
+use std::io:: { Error as IOError, Result as IOResult };
 use std::io::prelude::*;
 use std::path::Path;
 use std::fmt;
 use lcov_parser:: {
     LCOVParser, LCOVRecord, LineData, FunctionData as FunctionDataRecord,
     BranchData as BranchDataRecord,
-    FunctionName, ParseError, FromFile
+    FunctionName, ParseError, FromFile, RecordParseError
 };
 
 use result::summary:: { Summary };
@@ -18,29 +18,39 @@ use result::file:: { File, Files };
 use result::line:: { CheckSums };
 use record:: { RecordWriter };
 
+#[derive(Debug)]
+pub enum MergeError {
+    IOError(IOError),
+    RecordParseError(RecordParseError),
+    MissingChecksum
+}
+
+impl From<ParseError> for MergeError {
+    fn from(error: ParseError) -> Self {
+        match error {
+            ParseError::IOError(io) => MergeError::IOError(io),
+            ParseError::RecordParseError(record) => MergeError::RecordParseError(record)
+        }
+    }
+}
+
 pub fn parse_file<T: AsRef<Path>>(file: T) -> Result<Report, ParseError> {
     let mut parse = ReportParser::new();
     parse.parse(file)
 }
 
-pub fn merge_files<T: AsRef<Path>>(files: &[T]) -> Result<Report, ParseError> {
+pub fn merge_files<T: AsRef<Path>>(files: &[T]) -> Result<Report, MergeError> {
     let mut merged_report:Option<Report> = None;
 
     for file in files.iter() {
         let mut parse = ReportParser::new();
-        match parse.parse(file) {
-            Ok(report) => {
-                if merged_report.is_some() {
-                    let mut merged = merged_report.as_mut().unwrap();
-                    *merged += report;
-                } else {
-                    merged_report = Some(report);
-                }
-            },
-            Err(err) => {
-                return Err(err)
-            }
-        };
+        let report = try!(parse.parse(file));
+        if merged_report.is_some() {
+            let mut merged = merged_report.as_mut().unwrap();
+            *merged += report;
+        } else {
+            merged_report = Some(report);
+        }
     }
     Ok(merged_report.unwrap())
 }
