@@ -1,12 +1,11 @@
-use std::fmt:: { Display, Formatter, Result };
-use std::ops::AddAssign;
-use std::collections::btree_map:: { Iter };
-use std::convert::AsRef;
 use std::io;
+use std::fmt:: { Display, Formatter, Result };
+use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { BranchData };
+use merge:: { Merge };
 use record:: { RecordWriter };
-use result::summary:: { LineNumber, AggregateResult, Summary, ExecutionCount };
-use result::summary::counter:: { HitFoundCounter, FoundCounter, HitCounter };
+use report::summary:: { LineNumber, Summary, ExecutionCount };
+use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
 
 /// Units of the branch
 ///
@@ -48,42 +47,24 @@ impl Display for BranchUnit {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct BranchBlocks {
-    blocks: AggregateResult<BranchUnit, ExecutionCount>
+    blocks: BTreeMap<BranchUnit, ExecutionCount>
 }
 
 impl BranchBlocks {
     pub fn new() -> Self {
         BranchBlocks {
-            blocks: AggregateResult::new()
+            blocks: BTreeMap::new()
         }
     }
 }
 
-impl AsRef<AggregateResult<BranchUnit, ExecutionCount>> for BranchBlocks {
-    fn as_ref(&self) -> &AggregateResult<BranchUnit, ExecutionCount> {
-        &self.blocks
-    }
-}
+impl_summary!(BranchBlocks, blocks<BranchUnit, ExecutionCount>);
 
-impl Summary<BranchUnit, ExecutionCount> for BranchBlocks {
-    fn iter(&self) -> Iter<BranchUnit, ExecutionCount> {
-        self.blocks.iter()
-    }
-    fn contains_key(&self, key: &BranchUnit) -> bool {
-        self.blocks.contains_key(key)
-    }
-    fn get(&self, key: &BranchUnit) -> Option<&ExecutionCount> {
-        self.blocks.get(key)
-    }
-    fn len(&self) -> usize {
-        self.blocks.len()
-    }
-}
 
 impl HitCounter for BranchBlocks {
     fn hit_count(&self) -> usize {
         self.iter()
-            .filter(|&(_, taken)| *taken > 0)
+            .filter(|&(_, taken)| taken.is_hit())
             .count()
     }
 }
@@ -96,43 +77,52 @@ impl FoundCounter for BranchBlocks {
 
 impl HitFoundCounter for BranchBlocks {}
 
-impl AddAssign for BranchBlocks {
-    fn add_assign(&mut self, other: BranchBlocks) {
-        self.blocks += other.as_ref();
-    }
-}
 
-impl<'a> AddAssign<&'a BranchData> for BranchBlocks {
-    fn add_assign(&mut self, data: &'a BranchData) {
+
+impl<'a> Merge<&'a BranchData> for BranchBlocks {
+    fn merge(&mut self, data: &'a BranchData) {
         let unit = BranchUnit::new(data.block, data.branch);
-        let mut block_count = self.blocks.entry(unit)
-            .or_insert(0);
+
+        if !self.blocks.contains_key(&unit) {
+            self.blocks.insert(unit, data.taken);
+            return;
+        }
+        let mut block_count = self.blocks.get_mut(&unit).unwrap();
         *block_count += data.taken;
     }
 }
 
-impl<'a> AddAssign<&'a BranchBlocks> for BranchBlocks {
-    fn add_assign(&mut self, other: &'a BranchBlocks) {
-        self.blocks += other.as_ref();
+impl<'a> Merge<&'a BranchBlocks> for BranchBlocks {
+    fn merge(&mut self, other: &'a BranchBlocks) {
+        for (unit, taken) in other.iter() {
+            if !self.blocks.contains_key(unit) {
+                self.blocks.insert(unit.clone(), taken.clone());
+                continue;
+            }
+            let mut block = self.blocks.get_mut(unit).unwrap();
+            *block += *taken;
+        }
     }
 }
 
 
+
+
 #[derive(Debug, Clone)]
 pub struct Branches {
-    branches: AggregateResult<LineNumber, BranchBlocks>
+    branches: BTreeMap<LineNumber, BranchBlocks>
 }
 
 impl Branches {
     pub fn new() -> Self {
         Branches {
-            branches: AggregateResult::new()
+            branches: BTreeMap::new()
         }
     }
 }
 
-impl AsRef<AggregateResult<LineNumber, BranchBlocks>> for Branches {
-    fn as_ref(&self) -> &AggregateResult<LineNumber, BranchBlocks> {
+impl AsRef<BTreeMap<LineNumber, BranchBlocks>> for Branches {
+    fn as_ref(&self) -> &BTreeMap<LineNumber, BranchBlocks> {
         &self.branches
     }
 }
@@ -156,20 +146,8 @@ impl FoundCounter for Branches {
 impl HitFoundCounter for Branches {}
 
 
-impl Summary<LineNumber, BranchBlocks> for Branches {
-    fn iter(&self) -> Iter<LineNumber, BranchBlocks> {
-        self.branches.iter()
-    }
-    fn contains_key(&self, key: &LineNumber) -> bool {
-        self.branches.contains_key(key)
-    }
-    fn get(&self, key: &LineNumber) -> Option<&BranchBlocks> {
-        self.branches.get(key)
-    }
-    fn len(&self) -> usize {
-        self.branches.len()
-    }
-}
+impl_summary!(Branches, branches<LineNumber, BranchBlocks>);
+
 
 impl RecordWriter for Branches {
     fn write_to<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
@@ -194,27 +172,48 @@ impl Display for Branches {
     }
 }
 
-impl<'a> AddAssign<&'a Branches> for Branches {
-    fn add_assign(&mut self, other: &'a Branches) {
-        self.branches += other.as_ref();
+
+impl<'a> Merge<&'a Branches> for Branches {
+    fn merge(&mut self, other: &'a Branches) {
+        for (line_number, other_blocks) in other.iter() {
+            if !self.branches.contains_key(line_number) {
+                self.branches.insert(line_number.clone(), other_blocks.clone());
+                continue;
+            }
+            let mut blocks = self.branches.get_mut(line_number).unwrap();
+            blocks.merge(other_blocks);
+        }
     }
 }
 
-impl<'a> AddAssign<&'a BranchData> for Branches {
-    fn add_assign(&mut self, other: &'a BranchData) {
-        let mut blocks = self.branches.entry(other.line)
-            .or_insert(BranchBlocks::new());
-        *blocks += other;
+impl<'a> Merge<&'a BranchData> for Branches {
+    fn merge(&mut self, data: &'a BranchData) {
+        if self.branches.contains_key(&data.line) {
+            let mut blocks = self.branches.get_mut(&data.line).unwrap();
+            blocks.merge(data);
+        } else {
+            let blocks = {
+                let mut blocks = BranchBlocks::new();
+                blocks.merge(data);
+                blocks
+            };
+            self.branches.insert(
+                data.line.clone(),
+                blocks
+            );
+        }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
     use std::collections:: { HashMap };
     use lcov_parser:: { BranchData };
-    use result::branch:: { BranchUnit, Branches, BranchBlocks };
-    use result::summary:: { Summary };
-    use result::summary::counter:: { FoundCounter, HitCounter };
+    use merge::*;
+    use report::branch:: { BranchUnit, Branches, BranchBlocks };
+    use report::summary:: { Summary };
+    use report::summary::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn branch_unit() {
@@ -243,8 +242,8 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
 
-        branches += b1;
-        branches += b2;
+        branches.merge(b1);
+        branches.merge(b2);
 
         assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&2));
     }
@@ -255,12 +254,12 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
 
-        branches += b1;
-        branches += b2;
+        branches.merge(b1);
+        branches.merge(b2);
 
         let cloned_branches = branches.clone();
 
-        branches += &cloned_branches;
+        branches.merge(&cloned_branches);
 
         assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&4));
     }
@@ -271,8 +270,8 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 2, taken: 0 };
 
-        branches += b1;
-        branches += b2;
+        branches.merge(b1);
+        branches.merge(b2);
 
         assert_eq!(branches.hit_count(), 1);
         assert_eq!(branches.found_count(), 2);
@@ -281,8 +280,8 @@ mod tests {
     #[test]
     fn branches_hit_count_and_found_count() {
         let mut branches = Branches::new();
-        branches += &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
-        branches += &BranchData { line: 1, block: 0, branch: 2, taken: 0 };
+        branches.merge(&BranchData { line: 1, block: 0, branch: 1, taken: 1 });
+        branches.merge(&BranchData { line: 1, block: 0, branch: 2, taken: 0 });
 
         assert_eq!(branches.hit_count(), 1);
         assert_eq!(branches.found_count(), 2);
