@@ -4,7 +4,7 @@ use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
 use merger::ops:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError };
 use report::line:: { Lines };
 use report::function:: { Functions };
-use report::branch:: { Branches, BranchBlocks };
+use report::branch:: { Branches };
 use report::summary:: { TestName, Summary };
 
 #[derive(Debug, Clone)]
@@ -40,9 +40,6 @@ impl Test {
     }
     pub fn branches(&self) -> &Branches {
         &self.branches
-    }
-    pub fn get_branch_count(&self, line_number: &u32) -> Option<&BranchBlocks> {
-        self.branches.get(line_number)
     }
 }
 
@@ -185,21 +182,21 @@ mod tests {
 
     #[test]
     fn add_branch_data() {
-        let mut test = Test::new();
-
-        test.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 1 });
-
-        let mut branches1 = BranchBlocks::new();
-        branches1.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 1 } );
-
-        assert_eq!( test.get_branch_count(&1), Some(&branches1) );
-
-        test.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 1 } );
-
-        let mut branches2 = BranchBlocks::new();
-        branches2.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 } );
-
-        assert_eq!( test.get_branch_count(&1), Some(&branches2) );
+        let test = {
+            let mut test = Test::new();
+            test.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 });
+            test
+        };
+        let branches = {
+            let mut branches = BranchBlocks::new();
+            branches.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 } );
+            branches
+        };
+        let lookup_branches = {
+            let branches = test.branches();
+            branches.get(&1)
+        };
+        assert_eq!( lookup_branches, Some(&branches) );
     }
 
     #[test]
@@ -228,7 +225,11 @@ mod tests {
         let mut branches = BranchBlocks::new();
         branches.merge(&BranchData { line: 1, block: 1, branch: 1, taken: 2 });
 
-        assert_eq!( test1.get_branch_count(&1), Some(&branches) );
+        let lookup_branches = {
+            let branches = test1.branches();
+            branches.get(&1)
+        };
+        assert_eq!( lookup_branches, Some(&branches) );
     }
 
     #[test]
