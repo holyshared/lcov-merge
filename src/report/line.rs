@@ -7,7 +7,7 @@ use lcov_parser:: { LineData };
 use record:: { RecordWriter };
 use report::summary:: { LineNumber, CheckSum, ExecutionCount, Summary };
 use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
-use merge:: { TryMerge, MergeResult, MergeLine, ChecksumError };
+use merger::ops:: { TryMerge, MergeResult, MergeLine, ChecksumError };
 
 #[derive(Debug, Eq, Clone)]
 pub struct Line {
@@ -181,7 +181,7 @@ impl_try_merge_self_summary!(Lines:lines, ChecksumError);
 #[cfg(test)]
 mod tests {
     use lcov_parser:: { LineData };
-    use merge:: { TryMerge };
+    use merger::ops::*;
     use report::line:: { Line, Lines };
     use report::summary:: { Summary };
     use report::summary::counter:: { FoundCounter, HitCounter };

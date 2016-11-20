@@ -2,10 +2,9 @@ extern crate lcov_parser;
 
 #[macro_use]
 mod macros;
-mod merge;
-mod report;
+mod merger;
 mod record;
-mod parser;
+mod report;
 
-pub use self::merge:: { merge_files };
+pub use self::merger:: { merge_files };
 pub use self::report::*;

@@ -1,5 +1,5 @@
 use std::collections::btree_map:: { BTreeMap };
-use merge:: { TryMerge, MergeResult, TestError };
+use merger::ops:: { TryMerge, MergeResult, TestError };
 use report::test:: { Test, Tests };
 use report::summary:: { SourceFile, Summary };
 

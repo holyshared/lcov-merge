@@ -2,7 +2,7 @@ use std::io;
 use std::fmt:: { Display, Formatter, Result };
 use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { BranchData };
-use merge:: { Merge };
+use merger::ops:: { Merge };
 use record:: { RecordWriter };
 use report::summary:: { LineNumber, Summary, ExecutionCount };
 use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
@@ -210,7 +210,7 @@ impl<'a> Merge<&'a BranchData> for Branches {
 mod tests {
     use std::collections:: { HashMap };
     use lcov_parser:: { BranchData };
-    use merge::*;
+    use merger::ops::*;
     use report::branch:: { BranchUnit, Branches, BranchBlocks };
     use report::summary:: { Summary };
     use report::summary::counter:: { FoundCounter, HitCounter };

@@ -1,7 +1,7 @@
 use std::default:: { Default };
 use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
-use merge:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError };
+use merger::ops:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError };
 use report::line:: { Lines };
 use report::function:: { Functions };
 use report::branch:: { Branches, BranchBlocks };
@@ -175,7 +175,7 @@ impl_try_merge_self_summary!(Tests:tests, TestError);
 
 #[cfg(test)]
 mod tests {
-    use merge::*;
+    use merger::ops::*;
     use report::summary:: { Summary };
     use report::test:: { Test, Tests };
     use report::line:: { Line };

@@ -7,7 +7,6 @@ use std::path::Path;
 use report::summary:: { Summary };
 use report::file:: { File, Files };
 use record:: { RecordWriter };
-use merge:: { TryMerge, MergeResult, TestError };
 
 pub mod summary;
 pub mod file;
@@ -38,14 +37,6 @@ impl Report {
     pub fn save_as<T: AsRef<Path>>(&self, path: T) -> IOResult<()> {
         let mut output = try!(OpenOptions::new().create(true).write(true).open(path));
         self.write_to::<OutputFile>(&mut output)
-    }
-}
-
-impl<'a> TryMerge<&'a Report> for Report {
-    type Err = TestError;
-
-    fn try_merge(&mut self, other: &'a Report) -> MergeResult<Self::Err> {
-        self.files.try_merge(other.files())
     }
 }
 

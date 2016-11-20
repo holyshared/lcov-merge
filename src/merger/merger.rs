@@ -6,29 +6,34 @@ use lcov_parser:: {
     BranchData as BranchDataRecord,
     FunctionName, FromFile
 };
-
-use merge:: { Merge, TryMerge, MergeError, TestError, ChecksumError, FunctionError, MergeResult };
+use report:: { Report };
 use report::test:: { Tests };
 use report::file:: { File, Files };
-use report:: { Report };
+use merger::ops:: { Merge, TryMerge, MergeError, TestError, ChecksumError, FunctionError, MergeResult };
 
-pub struct ReportParser {
+pub struct ReportMerger {
     test_name: Option<String>,
     source_name: Option<String>,
     tests: Tests,
     files: Files
 }
 
-impl ReportParser {
+impl ReportMerger {
     pub fn new() -> Self {
-        ReportParser {
+        ReportMerger {
             test_name: None,
             source_name: None,
             tests: Tests::new(),
             files: Files::new()
         }
     }
-    pub fn parse<T: AsRef<Path>>(&mut self, file: T) -> Result<Report, MergeError> {
+    pub fn merge<T: AsRef<Path>>(&mut self, files: &[T]) -> Result<Report, MergeError> {
+        for file in files.iter() {
+            try!(self.process_file(file));
+        }
+        Ok(Report::new(self.files.clone()))
+    }
+    fn process_file<T: AsRef<Path>>(&mut self, file: T) -> Result<(), MergeError> {
         let mut parser = try!(LCOVParser::from_file(file));
 
         loop {
@@ -50,8 +55,9 @@ impl ReportParser {
                 _ => { continue; }
             };
         }
-        Ok(Report::new(self.files.clone()))
+        Ok(())
     }
+
     fn on_test_name(&mut self, test_name: &Option<String>) {
         self.test_name = match test_name {
             &Some(ref name) => Some(name.clone()),
@@ -107,10 +113,9 @@ impl ReportParser {
 }
 
 
-
 #[cfg(test)]
 mod tests {
-    use parser::report::*;
+    use merger::*;
     use std::path::Path;
     use std::fs::File;
     use std::io::*;
@@ -119,8 +124,8 @@ mod tests {
     fn save_as() {
         let report_path = "tests/fixtures/fixture1.info";
 
-        let mut parse = ReportParser::new();
-        let report = parse.parse(report_path).unwrap();
+        let mut parse = ReportMerger::new();
+        let report = parse.merge(&[ report_path ]).unwrap();
         let _ = report.save_as("/tmp/report.lcov").unwrap();
 
         assert_eq!(Path::new("/tmp/report.lcov").exists(), true);
@@ -135,8 +140,8 @@ mod tests {
             let _ = f.read_to_string(&mut output);
             output
         };
-        let mut parse = ReportParser::new();
-        let report = parse.parse(report_path).unwrap();
+        let mut parse = ReportMerger::new();
+        let report = parse.merge(&[ report_path ]).unwrap();
 
         assert_eq!(report.to_string(), readed_file_content);
     }

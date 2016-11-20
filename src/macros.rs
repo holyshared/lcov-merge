@@ -21,7 +21,7 @@ macro_rules! impl_summary {
 #[macro_export]
 macro_rules! impl_try_merge_self_summary {
     ($dest:ty:$field:ident, $err:ty) => {
-        impl<'a> $crate::merge::TryMerge<&'a $dest> for $dest {
+        impl<'a> $crate::merger::ops::TryMerge<&'a $dest> for $dest {
             type Err = $err;
 
             fn try_merge(&mut self, other: &'a $dest) -> MergeResult<Self::Err> {

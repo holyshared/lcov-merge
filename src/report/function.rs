@@ -4,7 +4,7 @@ use std::collections::btree_map:: { BTreeMap };
 use std::convert::{ From };
 use std::fmt:: { Display, Formatter, Result };
 use lcov_parser:: { FunctionName as FunctionNameRecord, FunctionData };
-use merge:: { TryMerge, MergeResult, FunctionError };
+use merger::ops:: { TryMerge, MergeResult, FunctionError };
 use record:: { RecordWriter };
 use report::summary:: { Summary, ExecutionCount, FunctionName, LineNumber };
 use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
@@ -220,7 +220,7 @@ mod tests {
     use report::function:: { Function, Functions };
     use report::summary:: { Summary };
     use report::summary::counter:: { FoundCounter, HitCounter };
-    use merge::*;
+    use merger::ops::*;
 
     #[test]
     fn add_function_data() {
