@@ -5,9 +5,10 @@ use std::convert::{ From };
 use std::fmt:: { Display, Formatter, Result };
 use lcov_parser:: { FunctionName as FunctionNameRecord, FunctionData };
 use merger::ops:: { TryMerge, MergeResult, FunctionError };
-use record:: { RecordWriter };
-use report::summary:: { Summary, ExecutionCount, FunctionName, LineNumber };
-use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
+use record:: { RecordWrite };
+use report::summary:: { Summary };
+use report::attribute:: { ExecutionCount, FunctionName, LineNumber };
+use report::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
 
 
 #[derive(Debug, Clone)]
@@ -43,8 +44,8 @@ impl HitFoundCounter for Functions {
 }
 
 
-impl RecordWriter for Functions {
-    fn write_to<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
+impl RecordWrite for Functions {
+    fn write_records<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
         write!(output, "{}", self)
     }
 }
@@ -219,7 +220,7 @@ mod tests {
     use lcov_parser:: { FunctionData };
     use report::function:: { Function, Functions };
     use report::summary:: { Summary };
-    use report::summary::counter:: { FoundCounter, HitCounter };
+    use report::counter:: { FoundCounter, HitCounter };
     use merger::ops::*;
 
     #[test]

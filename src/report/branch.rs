@@ -3,9 +3,10 @@ use std::fmt:: { Display, Formatter, Result };
 use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { BranchData };
 use merger::ops:: { Merge };
-use record:: { RecordWriter };
-use report::summary:: { LineNumber, Summary, ExecutionCount };
-use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
+use record:: { RecordWrite };
+use report::summary:: { Summary };
+use report::attribute:: { LineNumber, ExecutionCount };
+use report::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
 
 /// Units of the branch
 ///
@@ -149,8 +150,8 @@ impl HitFoundCounter for Branches {}
 impl_summary!(Branches, branches<LineNumber, BranchBlocks>);
 
 
-impl RecordWriter for Branches {
-    fn write_to<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
+impl RecordWrite for Branches {
+    fn write_records<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
         write!(output, "{}", self)
     }
 }
@@ -213,7 +214,7 @@ mod tests {
     use merger::ops::*;
     use report::branch:: { BranchUnit, Branches, BranchBlocks };
     use report::summary:: { Summary };
-    use report::summary::counter:: { FoundCounter, HitCounter };
+    use report::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn branch_unit() {

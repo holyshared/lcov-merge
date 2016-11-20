@@ -4,9 +4,10 @@ use std::collections::btree_map:: { BTreeMap };
 use std::convert::{ AsRef, From };
 use std::fmt:: { Display, Formatter, Result };
 use lcov_parser:: { LineData };
-use record:: { RecordWriter };
-use report::summary:: { LineNumber, CheckSum, ExecutionCount, Summary };
-use report::summary::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
+use record:: { RecordWrite };
+use report::summary:: { Summary };
+use report::attribute:: { LineNumber, CheckSum, ExecutionCount };
+use report::counter:: { Hit, HitFoundCounter, FoundCounter, HitCounter };
 use merger::ops:: { TryMerge, MergeResult, MergeLine, ChecksumError };
 
 #[derive(Debug, Eq, Clone)]
@@ -137,8 +138,8 @@ impl HitFoundCounter for Lines {
 
 
 
-impl RecordWriter for Lines {
-    fn write_to<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
+impl RecordWrite for Lines {
+    fn write_records<T: io::Write>(&self, output: &mut T) -> io::Result<()> {
         write!(output, "{}", self)
     }
 }
@@ -184,7 +185,7 @@ mod tests {
     use merger::ops::*;
     use report::line:: { Line, Lines };
     use report::summary:: { Summary };
-    use report::summary::counter:: { FoundCounter, HitCounter };
+    use report::counter:: { FoundCounter, HitCounter };
 
     #[test]
     fn add_line_data() {

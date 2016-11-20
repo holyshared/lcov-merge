@@ -6,14 +6,16 @@ use std::io::prelude::*;
 use std::path::Path;
 use report::summary:: { Summary };
 use report::file:: { File, Files };
-use record:: { RecordWriter };
+use record:: { RecordWrite };
 
+pub mod attribute;
 pub mod summary;
 pub mod file;
 pub mod branch;
 pub mod line;
 pub mod function;
 pub mod test;
+pub mod counter;
 
 pub struct Report {
     files: Files
@@ -36,12 +38,12 @@ impl Report {
     }
     pub fn save_as<T: AsRef<Path>>(&self, path: T) -> IOResult<()> {
         let mut output = try!(OpenOptions::new().create(true).write(true).open(path));
-        self.write_to::<OutputFile>(&mut output)
+        self.write_records::<OutputFile>(&mut output)
     }
 }
 
-impl RecordWriter for Report {
-    fn write_to<T: Write>(&self, output: &mut T) -> IOResult<()> {
+impl RecordWrite for Report {
+    fn write_records<T: Write>(&self, output: &mut T) -> IOResult<()> {
         writeln!(output, "{}", self)
     }
 }

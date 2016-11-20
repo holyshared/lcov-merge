@@ -1,7 +1,8 @@
 use std::collections::btree_map:: { BTreeMap };
 use merger::ops:: { TryMerge, MergeResult, TestError };
 use report::test:: { Test, Tests };
-use report::summary:: { SourceFile, Summary };
+use report::summary:: { Summary };
+use report::attribute:: { SourceFile };
 
 #[derive(Debug, Clone)]
 pub struct File {

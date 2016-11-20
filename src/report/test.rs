@@ -2,10 +2,11 @@ use std::default:: { Default };
 use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
 use merger::ops:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError };
+use report::attribute:: { TestName };
 use report::line:: { Lines };
 use report::function:: { Functions };
 use report::branch:: { Branches };
-use report::summary:: { TestName, Summary };
+use report::summary:: { Summary };
 
 #[derive(Debug, Clone)]
 pub struct Test {

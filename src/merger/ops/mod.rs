@@ -3,7 +3,7 @@ use std::convert::From;
 use std::io:: { Error as IOError};
 use lcov_parser:: { ParseError, RecordParseError };
 use report::line:: { Line };
-use report::summary:: { LineNumber, FunctionName, CheckSum };
+use report::attribute:: { LineNumber, FunctionName, CheckSum };
 
 pub type MergeResult<E> = Result<(), E>;
 
