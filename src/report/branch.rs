@@ -241,7 +241,7 @@ impl HitCounter for Branches {
     fn hit_count(&self) -> usize {
         self.iter()
             .map(|(_, blocks)| blocks.hit_count() )
-            .fold(0, |p, n| p + n)
+            .sum()
     }
 }
 
@@ -249,7 +249,7 @@ impl FoundCounter for Branches {
     fn found_count(&self) -> usize {
         self.iter()
             .map(|(_, blocks)| blocks.found_count() )
-            .fold(0, |p, n| p + n)
+            .sum()
     }
 }
 
