@@ -9,7 +9,7 @@ use lcov_parser:: {
 use report:: { Report };
 use report::test:: { Tests };
 use report::file:: { File, Files };
-use merger::ops:: { Merge, TryMerge, MergeError, TestError, ChecksumError, FunctionError, MergeResult };
+use merger::ops:: { Merge, TryMerge, MergeError, TestError, ChecksumError, BranchError, FunctionError, MergeResult };
 
 pub struct ReportMerger {
     test_name: Option<String>,
@@ -50,7 +50,7 @@ impl ReportMerger {
                 LCOVRecord::Data(ref data) => try!(self.on_data(data)),
                 LCOVRecord::FunctionName(ref func_name) => try!(self.on_func_name(func_name)),
                 LCOVRecord::FunctionData(ref func_data) => try!(self.on_func_data(func_data)),
-                LCOVRecord::BranchData(ref branch_data) => self.on_branch_data(branch_data),
+                LCOVRecord::BranchData(ref branch_data) => try!(self.on_branch_data(branch_data)),
                 LCOVRecord::EndOfRecord => try!(self.on_end_of_record()),
                 _ => { continue; }
             };
@@ -94,13 +94,13 @@ impl ReportMerger {
         try!(self.tests.try_merge((test_name, func_data)));
         Ok(())
     }
-    fn on_branch_data(&mut self, branch_data: &BranchDataRecord) {
+    fn on_branch_data(&mut self, branch_data: &BranchDataRecord) -> MergeResult<BranchError> {
         if self.test_name.is_none() {
-            return;
+            return Ok(());
         }
-
         let test_name = self.test_name.as_ref().unwrap();
-        self.tests.merge((test_name, branch_data));
+        try!(self.tests.try_merge((test_name, branch_data)));
+        Ok(())
     }
     fn on_end_of_record(&mut self) -> MergeResult<TestError> {
         let source_name = self.source_name.as_ref().unwrap();
