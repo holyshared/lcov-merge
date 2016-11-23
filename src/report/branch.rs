@@ -1,8 +1,10 @@
 use std::io;
+use std::cmp::PartialEq;
 use std::fmt:: { Display, Formatter, Result };
 use std::collections::btree_map:: { BTreeMap };
+use std::convert::{ From };
 use lcov_parser:: { BranchData };
-use merger::ops:: { Merge };
+use merger::ops:: { TryMerge, MergeResult, MergeBranch, BranchError };
 use record:: { RecordWrite };
 use report::summary:: { Summary };
 use report::attribute:: { LineNumber, ExecutionCount };
@@ -32,11 +34,11 @@ impl BranchUnit {
     pub fn new(block: u32, branch: u32) -> BranchUnit {
         BranchUnit(block, branch)
     }
-    pub fn block(&self) -> u32 {
-        self.0
+    pub fn block(&self) -> &u32 {
+        &self.0
     }
-    pub fn branch(&self) -> u32 {
-        self.1
+    pub fn branch(&self) -> &u32 {
+        &self.1
     }
 }
 
@@ -46,9 +48,133 @@ impl Display for BranchUnit {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Branch {
+    line_number: LineNumber,
+    block: u32,
+    branch: u32,
+    execution_count: ExecutionCount
+}
+
+impl Branch {
+    pub fn new(
+        line_number: LineNumber,
+        block: u32,
+        branch: u32,
+        execution_count: ExecutionCount
+    ) -> Self {
+        Branch {
+            line_number: line_number,
+            block: block,
+            branch: branch,
+            execution_count: execution_count
+        }
+    }
+    pub fn line_number(&self) -> &LineNumber {
+        &self.line_number
+    }
+    pub fn block(&self) -> &u32 {
+        &self.block
+    }
+    pub fn branch(&self) -> &u32 {
+        &self.branch
+    }
+    pub fn execution_count(&self) -> &ExecutionCount {
+        &self.execution_count
+    }
+}
+
+impl PartialEq<BranchData> for Branch {
+    fn eq(&self, data: &BranchData) -> bool {
+        if self.line_number != data.line {
+            return false;
+        }
+        let branch_matched = self.block == data.block && self.branch == data.branch;
+
+        if !branch_matched {
+            return false;
+        }
+        return true;
+    }
+}
+
+impl PartialEq<Branch> for Branch {
+    fn eq(&self, other: &Branch) -> bool {
+        if self.line_number != *other.line_number() {
+            return false;
+        }
+        let branch_matched = self.block == *other.block() && self.branch == *other.branch();
+
+        if !branch_matched {
+            return false;
+        }
+        return true;
+    }
+}
+
+
+
+
+
+
+
+impl<'a> From<&'a BranchData> for Branch {
+    fn from(data: &'a BranchData) -> Self {
+        Branch::new(
+            data.line,
+            data.block,
+            data.branch,
+            data.taken
+        )
+    }
+}
+
+impl<'a> TryMerge<&'a BranchData> for Branch {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, data: &'a BranchData) -> MergeResult<Self::Err> {
+        if self != data {
+            return Err(
+                BranchError::Mismatch(
+                    MergeBranch::from(&self.clone()),
+                    MergeBranch::from(data)
+                )
+            );
+        }
+        self.execution_count += data.taken;
+        Ok(())
+    }
+}
+
+impl<'a> TryMerge<&'a Branch> for Branch {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, other: &'a Branch) -> MergeResult<Self::Err> {
+        if self != other {
+            return Err(
+                BranchError::Mismatch(
+                    MergeBranch::from(&self.clone()),
+                    MergeBranch::from(other)
+                )
+            );
+        }
+        self.execution_count += *other.execution_count();
+        Ok(())
+    }
+}
+
+impl Hit for Branch {
+    fn is_hit(&self) -> bool {
+        self.execution_count.is_hit()
+    }
+}
+
+
+
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct BranchBlocks {
-    blocks: BTreeMap<BranchUnit, ExecutionCount>
+    blocks: BTreeMap<BranchUnit, Branch>
 }
 
 impl BranchBlocks {
@@ -59,13 +185,13 @@ impl BranchBlocks {
     }
 }
 
-impl_summary!(BranchBlocks, blocks<BranchUnit, ExecutionCount>);
+impl_summary!(BranchBlocks, blocks<BranchUnit, Branch>);
 
 
 impl HitCounter for BranchBlocks {
     fn hit_count(&self) -> usize {
         self.iter()
-            .filter(|&(_, taken)| taken.is_hit())
+            .filter(|&(_, branch)| branch.is_hit())
             .count()
     }
 }
@@ -80,32 +206,21 @@ impl HitFoundCounter for BranchBlocks {}
 
 
 
-impl<'a> Merge<&'a BranchData> for BranchBlocks {
-    fn merge(&mut self, data: &'a BranchData) {
+impl<'a> TryMerge<&'a BranchData> for BranchBlocks {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, data: &'a BranchData) -> MergeResult<Self::Err> {
         let unit = BranchUnit::new(data.block, data.branch);
-
         if !self.blocks.contains_key(&unit) {
-            self.blocks.insert(unit, data.taken);
-            return;
+            self.blocks.insert(unit, Branch::from(data));
+            return Ok(());
         }
-        let mut block_count = self.blocks.get_mut(&unit).unwrap();
-        *block_count += data.taken;
+        let mut block = self.blocks.get_mut(&unit).unwrap();
+        block.try_merge(data)
     }
 }
 
-impl<'a> Merge<&'a BranchBlocks> for BranchBlocks {
-    fn merge(&mut self, other: &'a BranchBlocks) {
-        for (unit, taken) in other.iter() {
-            if !self.blocks.contains_key(unit) {
-                self.blocks.insert(unit.clone(), taken.clone());
-                continue;
-            }
-            let mut block = self.blocks.get_mut(unit).unwrap();
-            *block += *taken;
-        }
-    }
-}
-
+impl_try_merge_self_summary!(BranchBlocks:blocks, BranchError);
 
 
 
@@ -119,12 +234,6 @@ impl Branches {
         Branches {
             branches: BTreeMap::new()
         }
-    }
-}
-
-impl AsRef<BTreeMap<LineNumber, BranchBlocks>> for Branches {
-    fn as_ref(&self) -> &BTreeMap<LineNumber, BranchBlocks> {
-        &self.branches
     }
 }
 
@@ -162,9 +271,9 @@ impl Display for Branches {
             return Ok(());
         }
         for (line_number, blocks) in self.iter() {
-            for (unit, taken) in blocks.iter() {
+            for (_, branch) in blocks.iter() {
                 try!(writeln!(f, "BRDA:{},{},{},{}",
-                    line_number, unit.block(), unit.branch(), taken));
+                    line_number, branch.block(), branch.branch(), branch.execution_count()));
             }
         }
         try!(writeln!(f, "BRF:{}", self.found_count()));
@@ -173,35 +282,27 @@ impl Display for Branches {
     }
 }
 
+impl_try_merge_self_summary!(Branches:branches, BranchError);
 
-impl<'a> Merge<&'a Branches> for Branches {
-    fn merge(&mut self, other: &'a Branches) {
-        for (line_number, other_blocks) in other.iter() {
-            if !self.branches.contains_key(line_number) {
-                self.branches.insert(line_number.clone(), other_blocks.clone());
-                continue;
-            }
-            let mut blocks = self.branches.get_mut(line_number).unwrap();
-            blocks.merge(other_blocks);
-        }
-    }
-}
 
-impl<'a> Merge<&'a BranchData> for Branches {
-    fn merge(&mut self, data: &'a BranchData) {
+impl<'a> TryMerge<&'a BranchData> for Branches {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, data: &'a BranchData) -> MergeResult<Self::Err> {
         if self.branches.contains_key(&data.line) {
             let mut blocks = self.branches.get_mut(&data.line).unwrap();
-            blocks.merge(data);
+            blocks.try_merge(data)
         } else {
             let blocks = {
                 let mut blocks = BranchBlocks::new();
-                blocks.merge(data);
+                let _ = try!(blocks.try_merge(data));
                 blocks
             };
             self.branches.insert(
                 data.line.clone(),
                 blocks
             );
+            Ok(())
         }
     }
 }
@@ -212,7 +313,7 @@ mod tests {
     use std::collections:: { HashMap };
     use lcov_parser:: { BranchData };
     use merger::ops::*;
-    use report::branch:: { BranchUnit, Branches, BranchBlocks };
+    use report::branch:: { Branch, BranchUnit, Branches, BranchBlocks };
     use report::summary:: { Summary };
     use report::counter:: { FoundCounter, HitCounter };
 
@@ -243,10 +344,11 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
 
-        branches.merge(b1);
-        branches.merge(b2);
+        branches.try_merge(b1).unwrap();
+        branches.try_merge(b2).unwrap();
 
-        assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&2));
+        let branch = Branch::new(1, 0, 1, 2);
+        assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&branch));
     }
 
     #[test]
@@ -255,14 +357,14 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
 
-        branches.merge(b1);
-        branches.merge(b2);
+        branches.try_merge(b1).unwrap();
+        branches.try_merge(b2).unwrap();
 
         let cloned_branches = branches.clone();
+        branches.try_merge(&cloned_branches).unwrap();
 
-        branches.merge(&cloned_branches);
-
-        assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&4));
+        let branch = Branch::new(1, 0, 1, 2);
+        assert_eq!(branches.get(&BranchUnit::new(0, 1)), Some(&branch));
     }
 
     #[test]
@@ -271,8 +373,8 @@ mod tests {
         let b1 = &BranchData { line: 1, block: 0, branch: 1, taken: 1 };
         let b2 = &BranchData { line: 1, block: 0, branch: 2, taken: 0 };
 
-        branches.merge(b1);
-        branches.merge(b2);
+        branches.try_merge(b1).unwrap();
+        branches.try_merge(b2).unwrap();
 
         assert_eq!(branches.hit_count(), 1);
         assert_eq!(branches.found_count(), 2);
@@ -281,8 +383,8 @@ mod tests {
     #[test]
     fn branches_hit_count_and_found_count() {
         let mut branches = Branches::new();
-        branches.merge(&BranchData { line: 1, block: 0, branch: 1, taken: 1 });
-        branches.merge(&BranchData { line: 1, block: 0, branch: 2, taken: 0 });
+        branches.try_merge(&BranchData { line: 1, block: 0, branch: 1, taken: 1 }).unwrap();
+        branches.try_merge(&BranchData { line: 1, block: 0, branch: 2, taken: 0 }).unwrap();
 
         assert_eq!(branches.hit_count(), 1);
         assert_eq!(branches.found_count(), 2);

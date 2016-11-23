@@ -1,8 +1,9 @@
 use std::result::Result;
 use std::convert::From;
 use std::io:: { Error as IOError};
-use lcov_parser:: { ParseError, RecordParseError };
+use lcov_parser:: { ParseError, RecordParseError, BranchData };
 use report::line:: { Line };
+use report::branch:: { Branch };
 use report::attribute:: { LineNumber, FunctionName, CheckSum };
 
 pub type MergeResult<E> = Result<(), E>;
@@ -48,9 +49,45 @@ pub enum FunctionError {
 }
 
 #[derive(Debug)]
+pub struct MergeBranch {
+    pub line: LineNumber,
+    pub block: u32,
+    pub branch: u32
+}
+
+impl<'a> From<&'a Branch> for MergeBranch {
+    fn from(branch: &'a Branch) -> Self {
+        let line = branch.line_number();
+        let block = branch.block();
+        let branch = branch.branch();
+        MergeBranch {
+            line: *line,
+            block: *block,
+            branch: *branch
+        }
+    }
+}
+
+impl<'a> From<&'a BranchData> for MergeBranch {
+    fn from(branch: &'a BranchData) -> Self {
+        MergeBranch {
+            line: branch.line,
+            block: branch.block,
+            branch: branch.branch
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum BranchError {
+    Mismatch(MergeBranch, MergeBranch)
+}
+
+#[derive(Debug)]
 pub enum TestError {
     Checksum(ChecksumError),
-    Function(FunctionError)
+    Function(FunctionError),
+    Branch(BranchError)
 }
 
 impl From<ChecksumError> for TestError {
@@ -62,6 +99,12 @@ impl From<ChecksumError> for TestError {
 impl From<FunctionError> for TestError {
     fn from(error: FunctionError) -> Self {
         TestError::Function(error)
+    }
+}
+
+impl From<BranchError> for TestError {
+    fn from(error: BranchError) -> Self {
+        TestError::Branch(error)
     }
 }
 
@@ -87,6 +130,12 @@ impl From<ChecksumError> for MergeError {
 impl From<FunctionError> for MergeError {
     fn from(error: FunctionError) -> Self {
         MergeError::Process(TestError::Function(error))
+    }
+}
+
+impl From<BranchError> for MergeError {
+    fn from(error: BranchError) -> Self {
+        MergeError::Process(TestError::Branch(error))
     }
 }
 

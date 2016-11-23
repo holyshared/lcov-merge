@@ -1,7 +1,7 @@
 use std::default:: { Default };
 use std::collections::btree_map:: { BTreeMap };
 use lcov_parser:: { LineData, FunctionName, FunctionData, BranchData };
-use merger::ops:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError };
+use merger::ops:: { Merge, TryMerge, MergeResult, TestError, ChecksumError, FunctionError, BranchError };
 use report::attribute:: { TestName };
 use report::line:: { Lines };
 use report::function:: { Functions };
@@ -69,9 +69,11 @@ impl<'a> TryMerge<&'a FunctionData> for Test {
     }
 }
 
-impl<'a> Merge<&'a BranchData> for Test {
-    fn merge(&mut self, branch_data: &'a BranchData) {
-        self.branches.merge(branch_data)
+impl<'a> TryMerge<&'a BranchData> for Test {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, branch_data: &'a BranchData) -> MergeResult<Self::Err> {
+        self.branches.try_merge(branch_data)
     }
 }
 
@@ -81,7 +83,7 @@ impl<'a> TryMerge<&'a Test> for Test {
     fn try_merge(&mut self, other: &'a Test) -> MergeResult<Self::Err> {
         try!(self.lines.try_merge(other.lines()));
         try!(self.functions.try_merge(other.functions()));
-        self.branches.merge(other.branches());
+        try!(self.branches.try_merge(other.branches()));
         Ok(())
     }
 }
@@ -158,13 +160,15 @@ impl<'a> TryMerge<(&'a String, &'a FunctionData)> for Tests {
     }
 }
 
-impl<'a> Merge<(&'a String, &'a BranchData)> for Tests {
-    fn merge(&mut self, branch_data: (&'a String, &'a BranchData)) {
+impl<'a> TryMerge<(&'a String, &'a BranchData)> for Tests {
+    type Err = BranchError;
+
+    fn try_merge(&mut self, branch_data: (&'a String, &'a BranchData)) -> MergeResult<Self::Err> {
         if !self.tests.contains_key(branch_data.0) {
             self.tests.insert(branch_data.0.clone(), Test::new());
         }
         let mut test = self.tests.get_mut(branch_data.0).unwrap();
-        Merge::merge(test, branch_data.1);
+        TryMerge::try_merge(test, branch_data.1)
     }
 }
 
@@ -178,19 +182,19 @@ mod tests {
     use report::test:: { Test, Tests };
     use report::line:: { Line };
     use report::function:: { Function };
-    use report::branch:: { BranchUnit, BranchBlocks };
+    use report::branch:: { BranchUnit, Branch, BranchBlocks };
     use lcov_parser:: { LineData, FunctionData, BranchData };
 
     #[test]
     fn add_branch_data() {
         let test = {
             let mut test = Test::new();
-            test.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 });
+            test.try_merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 }).unwrap();
             test
         };
         let branches = {
             let mut branches = BranchBlocks::new();
-            branches.merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 } );
+            branches.try_merge( &BranchData { line: 1, block: 1, branch: 1, taken: 2 } ).unwrap();
             branches
         };
         let lookup_branches = {
@@ -206,13 +210,13 @@ mod tests {
 
         test1.try_merge(&LineData { line: 1, count: 1, checksum: Some("xyz".to_string()) }).unwrap();
         test1.try_merge(&FunctionData { name: "main".to_string(), count: 1 }).unwrap();
-        test1.merge(&BranchData { line: 1, block: 1, branch: 1, taken: 1 });
+        test1.try_merge(&BranchData { line: 1, block: 1, branch: 1, taken: 1 }).unwrap();
 
         let test2 = {
             let mut test2 = Test::new();
             test2.try_merge(&LineData { line: 1, count: 1, checksum: Some("xyz".to_string()) }).unwrap();
             test2.try_merge(&FunctionData { name: "main".to_string(), count: 1 }).unwrap();
-            test2.merge(&BranchData { line: 1, block: 1, branch: 1, taken: 1 });
+            test2.try_merge(&BranchData { line: 1, block: 1, branch: 1, taken: 1 }).unwrap();
             test2
         };
         test1.try_merge(&test2).unwrap();
@@ -224,7 +228,7 @@ mod tests {
         assert_eq!( functions.get(&"main".to_string()), Some( &Function::new("main".to_string(), 0, 2)));
 
         let mut branches = BranchBlocks::new();
-        branches.merge(&BranchData { line: 1, block: 1, branch: 1, taken: 2 });
+        branches.try_merge(&BranchData { line: 1, block: 1, branch: 1, taken: 2 }).unwrap();
 
         let lookup_branches = {
             let branches = test1.branches();
@@ -244,7 +248,7 @@ mod tests {
 
         tests.try_merge((&test_name, line_data)).unwrap();
         tests.try_merge((&test_name, function_data)).unwrap();
-        tests.merge((&test_name, branch_data));
+        tests.try_merge((&test_name, branch_data)).unwrap();
 
         assert!( tests.contains_key(&test_name) );
 
@@ -256,6 +260,6 @@ mod tests {
 
         assert_eq!( lines.get(&1), Some(&Line::new(1, 1, None)));
         assert_eq!( functions.get(&function_name), Some( &Function::new("main".to_string(), 0, 1)));
-        assert_eq!( branch_blocks.get(&BranchUnit::new(1, 1)), Some(&1));
+        assert_eq!( branch_blocks.get(&BranchUnit::new(1, 1)), Some(&Branch::new(1, 1, 1, 1)));
     }
 }
