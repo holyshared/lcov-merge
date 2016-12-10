@@ -1,0 +1,10 @@
+(function() {var implementors = {};
+implementors["lcov_merge"] = ["impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='lcov_merge/branch/struct.BranchUnit.html' title='lcov_merge::branch::BranchUnit'>BranchUnit</a>","impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a>&lt;<a class='struct' href='https://holyshared.github.io/lcov-parser/lcov_parser/record/struct.BranchData.html' title='lcov_parser::record::BranchData'>BranchData</a>&gt; for <a class='struct' href='lcov_merge/branch/struct.Branch.html' title='lcov_merge::branch::Branch'>Branch</a>","impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a>&lt;<a class='struct' href='lcov_merge/branch/struct.Branch.html' title='lcov_merge::branch::Branch'>Branch</a>&gt; for <a class='struct' href='lcov_merge/branch/struct.Branch.html' title='lcov_merge::branch::Branch'>Branch</a>","impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='lcov_merge/branch/struct.BranchBlocks.html' title='lcov_merge::branch::BranchBlocks'>BranchBlocks</a>","impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='lcov_merge/line/struct.Line.html' title='lcov_merge::line::Line'>Line</a>","impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='lcov_merge/function/struct.Function.html' title='lcov_merge::function::Function'>Function</a>",];
+
+            if (window.register_implementors) {
+                window.register_implementors(implementors);
+            } else {
+                window.pending_implementors = implementors;
+            }
+        
+})()
