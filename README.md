@@ -1,5 +1,9 @@
 # lcov-merge
 
+This product is no longer maintained.  
+This product has been merged into [lcov-parser](https://github.com/holyshared/lcov-parser).
+
+
 [![Build Status](https://travis-ci.org/holyshared/lcov-merge.svg?branch=master)](https://travis-ci.org/holyshared/lcov-merge)
 
 ## Basic usage
